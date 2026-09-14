@@ -1,0 +1,10 @@
+{
+  "name": "spa-elaris-api",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start:dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "lint": "eslint \"src/**/*.ts\""
+  }
+}
