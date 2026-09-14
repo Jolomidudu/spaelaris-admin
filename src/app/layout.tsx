@@ -1,8 +1,5 @@
 import { Outfit } from 'next/font/google';
-// @ts-expect-error -- the stylesheet is resolved by the Next.js bundler.
 import './globals.css';
-// flatpickr does not provide TypeScript declarations for its CSS side-effect import.
-// @ts-expect-error -- the stylesheet is resolved by the Next.js bundler.
 import "flatpickr/dist/flatpickr.css";
 import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
