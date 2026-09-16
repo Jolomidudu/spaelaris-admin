@@ -24,6 +24,7 @@
     "@fullcalendar/timegrid": "^6.1.19",
     "@nestjs/common": "^11.2.3",
     "@nestjs/core": "^11.2.3",
+    "@nestjs/jwt": "12.0.2",
     "@nestjs/platform-express": "^11.2.3",
     "@prisma/client": "6.19.3",
     "@react-jvectormap/core": "^1.0.4",
@@ -32,6 +33,7 @@
     "@tailwindcss/postcss": "^4.1.17",
     "apexcharts": "^4.7.0",
     "autoprefixer": "^10.4.22",
+    "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.4",
     "flatpickr": "^4.6.13",
@@ -49,6 +51,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@svgr/webpack": "^8.1.0",
+    "@types/bcrypt": "^5.0.2",
     "@types/node": "^20.19.25",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
@@ -57,8 +60,8 @@
     "eslint-config-next": "16.0.7",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
-    "typescript": "^5.9.3",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
   },
   "overrides": {
     "@react-jvectormap/core": {
