@@ -73,7 +73,7 @@ const othersItems: NavItem[] = [
     name: "Operations",
     subItems: [
       { name: "Packages & memberships", path: "/badge", pro: false },
-      { name: "Payments", path: "/basic-tables", pro: false },
+      { name: "Payments", path: "/payments", pro: false },
     ],
   },
   {
