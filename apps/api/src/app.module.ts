@@ -4,9 +4,10 @@ import { PrismaModule } from './database/prisma.module';
 import { HealthController } from './health/health.controller';
 import { StaffModule } from './staff/staff.module';
 import { CustomersModule } from './customers/customers.module';
+import { AppointmentsModule } from './appointments/appointments.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, StaffModule, CustomersModule],
+  imports: [PrismaModule, AuthModule, StaffModule, CustomersModule, AppointmentsModule],
   controllers: [HealthController],
 })
 export class AppModule {}

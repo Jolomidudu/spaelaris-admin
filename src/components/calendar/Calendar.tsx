@@ -12,6 +12,7 @@ import {
 } from "@fullcalendar/core";
 import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
+import { getAccessToken } from "@/lib/auth";
 
 interface CalendarEvent extends EventInput {
   extendedProps: {
@@ -24,64 +25,48 @@ interface CalendarEvent extends EventInput {
   };
 }
 
-const initialEvents: CalendarEvent[] = [
-  {
-    id: "apt-1",
-    title: "Amaka Okafor — Deep Tissue",
-    start: "2026-09-16T09:00:00",
-    end: "2026-09-16T10:00:00",
+type Appointment = {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  notes: string | null;
+  customer: { firstName: string; lastName: string; phone: string };
+  therapist: { firstName: string; lastName: string } | null;
+  location: { name: string; city: string };
+  room: { name: string } | null;
+  services: { name: string; durationMinutes: number; quantity: number }[];
+};
+
+function getCalendarLevel(status: string) {
+  if (status === "CANCELLED" || status === "NO_SHOW") return "Danger";
+  if (status === "PENDING") return "Warning";
+  if (status === "CHECKED_IN" || status === "IN_SERVICE") return "Primary";
+  return "Success";
+}
+
+function toCalendarEvent(appointment: Appointment): CalendarEvent {
+  const customer = `${appointment.customer.firstName} ${appointment.customer.lastName}`;
+  const service = appointment.services.map((item) => item.name).join(", ") || "Spa treatment";
+  const therapist = appointment.therapist
+    ? `${appointment.therapist.firstName} ${appointment.therapist.lastName}`
+    : "Unassigned";
+
+  return {
+    id: appointment.id,
+    title: `${customer} — ${service}`,
+    start: appointment.startsAt,
+    end: appointment.endsAt,
     extendedProps: {
-      calendar: "Success",
-      customer: "Amaka Okafor",
-      service: "Deep tissue massage",
-      therapist: "Adaeze",
-      room: "Room 02",
-      status: "Confirmed",
+      calendar: getCalendarLevel(appointment.status),
+      customer,
+      service,
+      therapist,
+      room: appointment.room?.name || "Unassigned",
+      status: appointment.status,
     },
-  },
-  {
-    id: "apt-2",
-    title: "Tolu Williams — Glow Facial",
-    start: "2026-09-16T11:00:00",
-    end: "2026-09-16T12:00:00",
-    extendedProps: {
-      calendar: "Primary",
-      customer: "Tolu Williams",
-      service: "Glow facial",
-      therapist: "Nneka",
-      room: "Room 01",
-      status: "Checked in",
-    },
-  },
-  {
-    id: "apt-3",
-    title: "Chiamaka Eze — Aromatherapy",
-    start: "2026-09-16T14:00:00",
-    end: "2026-09-16T15:00:00",
-    extendedProps: {
-      calendar: "Warning",
-      customer: "Chiamaka Eze",
-      service: "Aromatherapy",
-      therapist: "Miriam",
-      room: "Suite 03",
-      status: "Pending",
-    },
-  },
-  {
-    id: "apt-4",
-    title: "David Cole — Couples Retreat",
-    start: "2026-09-17T16:00:00",
-    end: "2026-09-17T18:00:00",
-    extendedProps: {
-      calendar: "Danger",
-      customer: "David Cole",
-      service: "Couples retreat",
-      therapist: "Adaeze & Nneka",
-      room: "VIP Suite",
-      status: "Pending",
-    },
-  },
-];
+  };
+}
 
 const Calendar: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -90,14 +75,47 @@ const Calendar: React.FC = () => {
   const [eventService, setEventService] = useState("");
   const [eventTherapist, setEventTherapist] = useState("");
   const [eventRoom, setEventRoom] = useState("");
+  const [eventLocation, setEventLocation] = useState("lagos");
   const [eventStatus, setEventStatus] = useState("Confirmed");
   const [eventStartDate, setEventStartDate] = useState("");
   const [eventEndDate, setEventEndDate] = useState("");
   const [eventLevel, setEventLevel] = useState("Success");
-  const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const calendarRef = useRef<FullCalendar>(null);
   const { isOpen, openModal, closeModal } = useModal();
+
+  React.useEffect(() => {
+    async function loadAppointments() {
+      const token = getAccessToken();
+
+      if (!token) {
+        setLoadError("Your session has expired. Please sign in again.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("http://localhost:3001/api/appointments", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) throw new Error("Unable to load appointments.");
+        const appointments = (await response.json()) as Appointment[];
+        setEvents(appointments.map(toCalendarEvent));
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : "Unable to load appointments.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    void loadAppointments();
+  }, []);
 
   const calendarsEvents = useMemo(
     () => ({
@@ -111,6 +129,7 @@ const Calendar: React.FC = () => {
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     resetModalFields();
+    setSaveError("");
     setEventStartDate(selectInfo.startStr);
     setEventEndDate(selectInfo.endStr || selectInfo.startStr);
     openModal();
@@ -137,6 +156,7 @@ const Calendar: React.FC = () => {
     setEventService(event.extendedProps.service || "");
     setEventTherapist(event.extendedProps.therapist || "");
     setEventRoom(event.extendedProps.room || "");
+    setEventLocation("lagos");
     setEventStatus(event.extendedProps.status || "Confirmed");
     setEventStartDate(formatDateInput(event.start as string | Date | null | undefined));
     setEventEndDate(formatDateInput(event.end as string | Date | null | undefined));
@@ -144,38 +164,72 @@ const Calendar: React.FC = () => {
     openModal();
   };
 
-  const handleAddOrUpdateEvent = () => {
+  const handleAddOrUpdateEvent = async () => {
     const normalizedStart = eventStartDate || new Date().toISOString().slice(0, 16);
     const normalizedEnd = eventEndDate || normalizedStart;
 
-    const eventData = {
-      title: eventTitle || "New appointment",
-      start: normalizedStart,
-      end: normalizedEnd,
-      extendedProps: {
-        calendar: eventLevel,
-        customer: eventCustomer,
-        service: eventService,
-        therapist: eventTherapist,
-        room: eventRoom,
-        status: eventStatus,
-      },
-    };
+    const token = getAccessToken();
+    if (!token) {
+      setSaveError("Your session has expired. Please sign in again.");
+      return;
+    }
 
-    if (selectedEvent) {
-      setEvents((prevEvents) =>
-        prevEvents.map((event) =>
-          event.id === selectedEvent.id
-            ? { ...event, ...eventData }
-            : event
-        )
-      );
-    } else {
-      const newEvent: CalendarEvent = {
-        id: `event-${Date.now()}`,
-        ...eventData,
-      };
-      setEvents((prevEvents) => [...prevEvents, newEvent]);
+    setSaveError("");
+    setIsSaving(true);
+
+    try {
+      if (selectedEvent) {
+        const response = await fetch(`http://localhost:3001/api/appointments/${selectedEvent.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            startsAt: normalizedStart,
+            endsAt: normalizedEnd,
+            status: eventStatus.toUpperCase().replace(/ /g, "_"),
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to update appointment.");
+        }
+      } else {
+        const response = await fetch("http://localhost:3001/api/appointments", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            customerPhone: eventCustomer,
+            serviceSlug: eventService,
+            locationSlug: eventLocation,
+            therapistEmail: eventTherapist || undefined,
+            roomName: eventRoom || undefined,
+            startsAt: normalizedStart,
+            endsAt: normalizedEnd,
+            status: eventStatus.toUpperCase().replace(/ /g, "_"),
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to save appointment.");
+        }
+
+      }
+      const refreshResponse = await fetch("http://localhost:3001/api/appointments", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!refreshResponse.ok) throw new Error("Appointment was saved, but the calendar could not refresh.");
+      const appointments = (await refreshResponse.json()) as Appointment[];
+      setEvents(appointments.map(toCalendarEvent));
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to save appointment.");
+      return;
+    } finally {
+      setIsSaving(false);
     }
 
     closeModal();
@@ -188,6 +242,7 @@ const Calendar: React.FC = () => {
     setEventService("");
     setEventTherapist("");
     setEventRoom("");
+    setEventLocation("lagos");
     setEventStatus("Confirmed");
     setEventStartDate("");
     setEventEndDate("");
@@ -198,6 +253,8 @@ const Calendar: React.FC = () => {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
       <div className="custom-calendar">
+        {loadError && <p className="px-5 py-4 text-sm text-error-600 dark:text-error-400">{loadError}</p>}
+        {isLoading && <p className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">Loading appointments...</p>}
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -232,6 +289,8 @@ const Calendar: React.FC = () => {
             </p>
           </div>
 
+          {saveError && <p className="mt-4 rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">{saveError}</p>}
+
           <div className="mt-8 grid gap-5 md:grid-cols-2">
             <div className="md:col-span-2">
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -247,48 +306,63 @@ const Calendar: React.FC = () => {
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Customer
+                Customer phone
               </label>
               <input
                 type="text"
                 value={eventCustomer}
                 onChange={(e) => setEventCustomer(e.target.value)}
+                placeholder="+234 812 123 4567"
                 className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
               />
             </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Service
+                Service slug
               </label>
               <input
                 type="text"
                 value={eventService}
                 onChange={(e) => setEventService(e.target.value)}
+                placeholder="deep-tissue-massage"
                 className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
               />
             </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Therapist
+                Therapist email
               </label>
               <input
                 type="text"
                 value={eventTherapist}
                 onChange={(e) => setEventTherapist(e.target.value)}
+                placeholder="therapist@spaelaris.com"
                 className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
               />
             </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Room
+                Room name
               </label>
               <input
                 type="text"
                 value={eventRoom}
                 onChange={(e) => setEventRoom(e.target.value)}
+                placeholder="Treatment Room 1"
+                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Location slug</label>
+              <input
+                type="text"
+                value={eventLocation}
+                onChange={(e) => setEventLocation(e.target.value)}
+                placeholder="lagos"
                 className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
               />
             </div>
@@ -368,7 +442,7 @@ const Calendar: React.FC = () => {
               type="button"
               className="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto"
             >
-              {selectedEvent ? "Update appointment" : "Save appointment"}
+              {isSaving ? "Saving..." : selectedEvent ? "Update appointment" : "Save appointment"}
             </button>
           </div>
         </div>
