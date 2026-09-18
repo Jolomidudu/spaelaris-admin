@@ -13,6 +13,7 @@ import {
 import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
 import { getAccessToken } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/api";
 
 interface CalendarEvent extends EventInput {
   extendedProps: {
@@ -100,7 +101,7 @@ const Calendar: React.FC = () => {
       }
 
       try {
-        const response = await fetch("http://localhost:3001/api/appointments", {
+        const response = await fetch(`${API_BASE_URL}/api/appointments`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -179,7 +180,7 @@ const Calendar: React.FC = () => {
 
     try {
       if (selectedEvent) {
-        const response = await fetch(`http://localhost:3001/api/appointments/${selectedEvent.id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/appointments/${selectedEvent.id}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -196,7 +197,7 @@ const Calendar: React.FC = () => {
           throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to update appointment.");
         }
       } else {
-        const response = await fetch("http://localhost:3001/api/appointments", {
+        const response = await fetch(`${API_BASE_URL}/api/appointments`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -219,7 +220,7 @@ const Calendar: React.FC = () => {
         }
 
       }
-      const refreshResponse = await fetch("http://localhost:3001/api/appointments", {
+      const refreshResponse = await fetch(`${API_BASE_URL}/api/appointments`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!refreshResponse.ok) throw new Error("Appointment was saved, but the calendar could not refresh.");

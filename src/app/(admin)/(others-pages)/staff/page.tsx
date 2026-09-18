@@ -5,6 +5,7 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import { getAccessToken } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/api";
 import React from "react";
 import { useEffect, useState } from "react";
 
@@ -66,7 +67,7 @@ export default function StaffDirectoryPage() {
       }
 
       try {
-        const response = await fetch("http://localhost:3001/api/staff", {
+        const response = await fetch(`${API_BASE_URL}/api/staff`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -104,7 +105,7 @@ export default function StaffDirectoryPage() {
     }
 
     try {
-      const response = await fetch("http://localhost:3001/api/staff", {
+      const response = await fetch(`${API_BASE_URL}/api/staff`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -117,7 +118,7 @@ export default function StaffDirectoryPage() {
         throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to create staff member.");
       }
 
-      const refreshResponse = await fetch("http://localhost:3001/api/staff", {
+      const refreshResponse = await fetch(`${API_BASE_URL}/api/staff`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!refreshResponse.ok) throw new Error("Staff member was created, but the directory could not refresh.");

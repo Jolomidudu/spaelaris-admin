@@ -2,6 +2,7 @@
 
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import { getAccessToken } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/api";
 import React, { useEffect, useState } from "react";
 
 type Payment = {
@@ -60,7 +61,7 @@ export default function PaymentsPage() {
       }
 
       try {
-        const response = await fetch("http://localhost:3001/api/payments", {
+        const response = await fetch(`${API_BASE_URL}/api/payments`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!response.ok) throw new Error("Unable to load payment records.");
@@ -78,7 +79,7 @@ export default function PaymentsPage() {
   async function refreshPayments() {
     const token = getAccessToken();
     if (!token) throw new Error("Your session has expired. Please sign in again.");
-    const response = await fetch("http://localhost:3001/api/payments", {
+    const response = await fetch(`${API_BASE_URL}/api/payments`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error("Unable to refresh payment records.");
@@ -93,7 +94,7 @@ export default function PaymentsPage() {
     try {
       const token = getAccessToken();
       if (!token) throw new Error("Your session has expired. Please sign in again.");
-      const response = await fetch("http://localhost:3001/api/payments", {
+      const response = await fetch(`${API_BASE_URL}/api/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ appointmentId, reference, amountKobo: Math.round(Number(amount) * 100), method }),
@@ -117,7 +118,7 @@ export default function PaymentsPage() {
     try {
       const token = getAccessToken();
       if (!token) throw new Error("Your session has expired. Please sign in again.");
-      const response = await fetch(`http://localhost:3001/api/payments/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/payments/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status }),
