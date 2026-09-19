@@ -1,208 +1,186 @@
-# TailAdmin Next.js - Free Next.js Tailwind Admin Dashboard Template
+# Spaelaris Admin
 
-TailAdmin is a free and open-source admin dashboard template built on **Next.js and Tailwind CSS** providing developers with everything they need to create a feature-rich and data-driven: back-end, dashboard, or admin panel solution for any sort of web project.
+Spaelaris Admin is the operations platform for a multi-location spa and massage business. It supports the daily work of owners, managers, receptionists, and therapists across the Spaelaris Lagos and Abuja locations.
 
-![TailAdmin - Next.js Dashboard Preview](./banner.png)
+The platform manages:
 
-With TailAdmin Next.js, you get access to all the necessary dashboard UI components, elements, and pages required to build a high-quality and complete dashboard or admin panel. Whether you're building a dashboard or admin panel for a complex web application or a simple website.
+- Services, categories, pricing, and treatment duration
+- Service packages and customer memberships
+- Customers and booking history
+- Therapists and their bookable services
+- Treatment rooms by location
+- Appointments and scheduling
+- Payments, Paystack transactions, and payment status
+- Dashboard metrics for appointments, revenue, customers, and rooms
 
-TailAdmin utilizes the powerful features of **Next.js 16** and common features of Next.js such as server-side rendering (SSR), static site generation (SSG), and seamless API route integration. Combined with the advancements of **React 19** and the robustness of **TypeScript**, TailAdmin is the perfect solution to help get your project up and running quickly.
+## Architecture
 
-## Overview
+This workspace contains the backend application. The admin frontend is maintained in the separate `sew-admin2` project.
 
-TailAdmin provides essential UI components and layouts for building feature-rich, data-driven admin dashboards and control panels. It's built on:
+- **API:** NestJS 11
+- **Database:** PostgreSQL on Neon
+- **ORM:** Prisma
+- **Authentication:** JWT with bcrypt password validation
+- **Payments:** Paystack with Nigerian naira pricing
+- **Backend hosting:** Railway
+- **Frontend:** Next.js 16 and React 19 in the frontend project
 
-* Next.js 16.x
-* React 19
-* TypeScript
-* Tailwind CSS V4
+The API uses the `/api` prefix. The frontend communicates with the deployed Railway API through `NEXT_PUBLIC_API_URL`.
 
-### Quick Links
+## Roles
 
-* [✨ Visit Website](https://tailadmin.com)
-* [📄 Documentation](https://tailadmin.com/docs)
-* [⬇️ Download](https://tailadmin.com/download)
-* [🖌️ Figma Design File (Community Edition)](https://www.figma.com/community/file/1463141366275764364)
-* [⚡ Get PRO Version](https://tailadmin.com/pricing)
+Spaelaris supports these admin roles:
 
-### Demos
+- **Owner:** Full business access
+- **Manager:** Operational and staff management
+- **Receptionist:** Customers, appointments, rooms, and payments
+- **Therapist:** Assigned services and appointment work
 
-* [Free Version](https://nextjs-free-demo.tailadmin.com)
-* [Pro Version](https://nextjs-demo.tailadmin.com)
+## Core API Areas
 
-### Other Versions
+Authenticated endpoints currently include:
 
-- [Next.js Version](https://github.com/TailAdmin/free-nextjs-admin-dashboard)
-- [React.js Version](https://github.com/TailAdmin/free-react-tailwind-admin-dashboard)
-- [Vue.js Version](https://github.com/TailAdmin/vue-tailwind-admin-dashboard)
-- [Angular Version](https://github.com/TailAdmin/free-angular-tailwind-dashboard)
-- [Laravel Version](https://github.com/TailAdmin/tailadmin-laravel)
+- `/api/auth`
+- `/api/services`
+- `/api/packages`
+- `/api/staff`
+- `/api/customers`
+- `/api/rooms`
+- `/api/appointments`
+- `/api/payments`
 
-## Installation
+The health check is available at `/api/health`.
 
-### Prerequisites
+## Requirements
 
-To get started with TailAdmin, ensure you have the following prerequisites installed and set up:
+- Node.js 20 or later
+- npm
+- A Neon PostgreSQL database
+- A Railway service for the API
 
-* Node.js 18.x or later (recommended to use Node.js 20.x or later)
+## Environment Variables
 
-### Cloning the Repository
+Create a `.env` file in the project root:
 
-Clone the repository using the following command:
-
-```bash
-git clone https://github.com/TailAdmin/free-nextjs-admin-dashboard.git
+```env
+DATABASE_URL="your-neon-pooled-connection-string"
+JWT_SECRET="your-long-random-secret"
+OWNER_INITIAL_PASSWORD="your-initial-owner-password"
+PAYSTACK_SECRET_KEY="your-paystack-secret-key"
 ```
 
-> Windows Users: place the repository near the root of your drive if you face issues while cloning.
+`PAYSTACK_SECRET_KEY` is required for Paystack checkout initialization and webhook verification. It can be omitted while working on non-payment features.
 
-1. Install dependencies:
+## Local Development
 
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
+Install dependencies:
 
-   > Use `--legacy-peer-deps` flag if you face peer-dependency error during installation.
+```bash
+npm install
+```
 
-2. Start the development server:
+Generate the Prisma client:
 
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+```bash
+npm run db:generate
+```
 
-## Components
+Validate the Prisma schema:
 
-TailAdmin is a pre-designed starting point for building a web-based dashboard using Next.js and Tailwind CSS. The template includes:
+```bash
+npm run db:validate
+```
 
-* Sophisticated and accessible sidebar
-* Data visualization components
-* Profile management and custom 404 page
-* Tables and Charts(Line and Bar)
-* Authentication forms and input elements
-* Alerts, Dropdowns, Modals, Buttons and more
-* Can't forget Dark Mode 🕶️
+Apply migrations to the configured database:
 
-All components are built with React and styled using Tailwind CSS for easy customization.
+```bash
+npm run db:migrate:deploy
+```
 
-## Feature Comparison
+Seed the initial Spaelaris owner, locations, services, categories, and rooms:
 
-### Free Version
+```bash
+npm run db:seed
+```
 
-* 1 Unique Dashboard
-* 30+ dashboard components
-* 50+ UI elements
-* Basic Figma design files
-* Community support
+Build the API:
 
-### Pro Version
+```bash
+npm run api:build
+```
 
-* 7 Unique Dashboards: Analytics, Ecommerce, Marketing, CRM, SaaS, Stocks, Logistics (more coming soon)
-* 500+ dashboard components and UI elements
-* Complete Figma design file
-* Email support
+Start the compiled API:
 
-To learn more about pro version features and pricing, visit our [pricing page](https://tailadmin.com/pricing).
+```bash
+npm run api:start
+```
 
-## Changelog
+The API listens on the Railway-provided `PORT`, or port `3001` locally when no port is configured.
 
-### Version 2.3.0 - [April 28, 2026]
+## Railway Deployment
 
-- **New Feature**: Added **AI Dashboard** with token usage and revenue tracking.
-- **New Feature**: Added **Sales Dashboard** with retention and multi-channel analytics.
-- **New Feature**: Added **Finance Dashboard** with cashflow and balance management.
-- **New Feature**: Introduced **6 New Layout variations** for improved UI flexibility.
-- **Enhancement**: Integrated **Advanced Data Visualization** with 7+ new chart types.
+Railway should be connected to the `master` branch of the backend repository.
 
-### Version 2.2.3 - [March 15, 2026]
+Use these service commands:
 
-* update ESLint configuration and dependencies; upgrade Next.js to version 16.1.6
+**Build command**
 
-### Version 2.2.2 - [December 30, 2025]
+```bash
+npm run railway:build
+```
 
-* Fixed date picker positioning and functionality in Statistics Chart.
+**Start command**
+
+```bash
+npm run api:start
+```
+
+The Railway build generates Prisma Client, applies production migrations, and compiles the NestJS API. Configure `DATABASE_URL`, `JWT_SECRET`, `OWNER_INITIAL_PASSWORD`, and `PAYSTACK_SECRET_KEY` in the Railway service variables.
+
+After deployment, verify the service with:
+
+```text
+https://your-railway-domain/api/health
+```
+
+## Frontend Connection
+
+In the separate `sew-admin2` frontend project, set:
+
+```env
+NEXT_PUBLIC_API_URL="https://your-railway-domain"
+```
+
+The frontend stores the authenticated session in the browser and sends the JWT as a bearer token to protected API routes.
+
+## Available Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the Next.js development server |
+| `npm run build` | Build the Next.js application |
+| `npm run api:typecheck` | Type-check the NestJS API without emitting files |
+| `npm run api:build` | Compile the NestJS API |
+| `npm run api:start` | Start the compiled API |
+| `npm run db:generate` | Generate Prisma Client |
+| `npm run db:validate` | Validate the Prisma schema |
+| `npm run db:migrate` | Create and apply a development migration |
+| `npm run db:migrate:deploy` | Apply existing migrations |
+| `npm run db:seed` | Seed the Spaelaris database |
+| `npm run railway:build` | Prepare the API for Railway deployment |
+
+## Product Direction
+
+The first release focuses on reliable spa operations:
+
+1. Admin authentication and role-aware access
+2. Service and package catalog management
+3. Customer self-booking support
+4. Receptionist-created appointments
+5. Therapist and room scheduling
+6. Paystack and offline payment tracking
+7. Membership assignment and management
+
+Email, SMS, WhatsApp, and push notifications are planned for a later release. Therapist mobile workflows will be delivered through the planned Flutter application.
 
 
-### Version 2.1.0 - [November 15, 2025]
-
-* Updated to Next.js 16.x
-* Fixed all reported minor bugs
-
-### Version 2.0.2 - [March 25, 2025]
-
-* Upgraded to Next.js 16.x for [CVE-2025-29927](https://nextjs.org/blog/cve-2025-29927) concerns
-* Included overrides vectormap for packages to prevent peer dependency errors during installation.
-* Migrated from react-flatpickr to flatpickr package for React 19 support
-
-### Version 2.0.1 - [February 27, 2025]
-
-#### Update Overview
-
-* Upgraded to Tailwind CSS v4 for better performance and efficiency.
-* Updated class usage to match the latest syntax and features.
-* Replaced deprecated class and optimized styles.
-
-#### Next Steps
-
-* Run npm install or yarn install to update dependencies.
-* Check for any style changes or compatibility issues.
-* Refer to the Tailwind CSS v4 [Migration Guide](https://tailwindcss.com/docs/upgrade-guide) on this release. if needed.
-* This update keeps the project up to date with the latest Tailwind improvements. 🚀
-
-### v2.0.0 (February 2025)
-
-A major update focused on Next.js 16 implementation and comprehensive redesign.
-
-#### Major Improvements
-
-* Complete redesign using Next.js 16 App Router and React Server Components
-* Enhanced user interface with Next.js-optimized components
-* Improved responsiveness and accessibility
-* New features including collapsible sidebar, chat screens, and calendar
-* Redesigned authentication using Next.js App Router and server actions
-* Updated data visualization using ApexCharts for React
-
-#### Breaking Changes
-
-* Migrated from Next.js 14 to Next.js 16
-* Chart components now use ApexCharts for React
-* Authentication flow updated to use Server Actions and middleware
-
-[Read more](https://tailadmin.com/docs/update-logs/nextjs) on this release.
-
-### v1.3.4 (July 01, 2024)
-
-* Fixed JSvectormap rendering issues
-
-### v1.3.3 (June 20, 2024)
-
-* Fixed build error related to Loader component
-
-### v1.3.2 (June 19, 2024)
-
-* Added ClickOutside component for dropdown menus
-* Refactored sidebar components
-* Updated Jsvectormap package
-
-### v1.3.1 (Feb 12, 2024)
-
-* Fixed layout naming consistency
-* Updated styles
-
-### v1.3.0 (Feb 05, 2024)
-
-* Upgraded to Next.js 14
-* Added Flatpickr integration
-* Improved form elements
-* Enhanced multiselect functionality
-* Added default layout component
-
-## License
-
-TailAdmin Next.js Free Version is released under the MIT License.
-
-## Support
-If you find this project helpful, please consider giving it a star on GitHub. Your support helps us continue developing and maintaining this template.
