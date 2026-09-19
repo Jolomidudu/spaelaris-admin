@@ -16,12 +16,13 @@ const customers_module_1 = require("./customers/customers.module");
 const appointments_module_1 = require("./appointments/appointments.module");
 const payments_module_1 = require("./payments/payments.module");
 const services_module_1 = require("./services/services.module");
+const rooms_module_1 = require("./rooms/rooms.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, auth_module_1.AuthModule, staff_module_1.StaffModule, customers_module_1.CustomersModule, appointments_module_1.AppointmentsModule, payments_module_1.PaymentsModule, services_module_1.ServicesModule],
+        imports: [prisma_module_1.PrismaModule, auth_module_1.AuthModule, staff_module_1.StaffModule, customers_module_1.CustomersModule, appointments_module_1.AppointmentsModule, payments_module_1.PaymentsModule, services_module_1.ServicesModule, rooms_module_1.RoomsModule],
         controllers: [health_controller_1.HealthController],
     })
 ], AppModule);

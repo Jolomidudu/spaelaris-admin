@@ -7,9 +7,11 @@ import { CustomersModule } from './customers/customers.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ServicesModule } from './services/services.module';
+import { RoomsModule } from './rooms/rooms.module';
+import { PackagesModule } from './packages/packages.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, StaffModule, CustomersModule, AppointmentsModule, PaymentsModule, ServicesModule],
+  imports: [PrismaModule, AuthModule, StaffModule, CustomersModule, AppointmentsModule, PaymentsModule, ServicesModule, RoomsModule, PackagesModule],
   controllers: [HealthController],
 })
 export class AppModule {}
