@@ -6,14 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "api:start": "node apps/api/dist/main.js",
     "lint": "eslint .",
     "db:generate": "prisma generate",
     "db:format": "prisma format",
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "api:typecheck": "tsc -p apps/api/tsconfig.json --noEmit",
-    "api:build": "tsc -p apps/api/tsconfig.json"
+    "api:build": "tsc -p apps/api/tsconfig.json",
+    "railway:build": "npm run db:generate && npm run db:migrate:deploy && npm run api:build"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",
