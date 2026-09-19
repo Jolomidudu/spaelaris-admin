@@ -77,8 +77,8 @@ export default function SignInForm() {
             <Image
               src="/images/logo/selogo.png"
               alt="Spa Elaris"
-              width={100}
-              height={52}
+              width={60}
+              height={22}
               className="h-auto w-32 object-contain"
             />
           </Link>
