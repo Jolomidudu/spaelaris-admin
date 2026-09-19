@@ -6,6 +6,7 @@ import Button from "@/components/ui/button/Button";
 import { getStoredAuth, saveAuthSession } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -72,6 +73,15 @@ export default function SignInForm() {
       </div>
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
+          <Link href="/" className="mb-6 inline-block">
+            <Image
+              src="/images/logo/selogo.png"
+              alt="Spa Elaris"
+              width={150}
+              height={72}
+              className="h-auto w-32 object-contain"
+            />
+          </Link>
           <div className="mb-5 sm:mb-8">
             <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
               Sign In
@@ -140,7 +150,7 @@ export default function SignInForm() {
                   </Link>
                 </div>
                 <div>
-                  <Button className="w-full" size="sm" type="submit" disabled={isLoading}>
+                  <Button className="w-full !bg-[#d9c2a3] !text-[#536238] hover:!bg-[#cdb38f]" size="sm" type="submit" disabled={isLoading}>
                     {isLoading ? "Signing in..." : "Sign in"}
                   </Button>
                 </div>
