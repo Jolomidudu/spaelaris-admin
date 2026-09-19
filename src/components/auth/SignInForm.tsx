@@ -77,8 +77,8 @@ export default function SignInForm() {
             <Image
               src="/images/logo/selogo.png"
               alt="Spa Elaris"
-              width={150}
-              height={72}
+              width={100}
+              height={52}
               className="h-auto w-32 object-contain"
             />
           </Link>
@@ -163,7 +163,7 @@ export default function SignInForm() {
                 Don&apos;t have an account? {" "}
                 <Link
                   href="/signup"
-                  className="text-brand-500 hover:text-[#536238]-600 dark:text-[#536238]-400"
+                  className="text-[#536238]-500 hover:text-[#536238]-600 dark:text-[#536238]-400"
                 >
                    Sign Up
                 </Link>

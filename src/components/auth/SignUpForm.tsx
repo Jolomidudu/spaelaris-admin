@@ -135,7 +135,7 @@ export default function SignUpForm() {
                 Already have an account?
                 <Link
                   href="/signin"
-                  className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                  className="text-[#536238]-500 hover:text-[#536238]-600 dark:text-[#536238]-400"
                 >
                   Sign In
                 </Link>
