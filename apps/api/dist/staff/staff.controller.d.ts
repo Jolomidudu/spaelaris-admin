@@ -11,36 +11,36 @@ export declare class StaffController {
     private readonly staffService;
     constructor(staffService: StaffService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
-        id: string;
+        user: {
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            phone: string | null;
+            role: import(".prisma/client").$Enums.UserRole;
+            status: import(".prisma/client").$Enums.UserStatus;
+        };
         location: {
             id: string;
             name: string;
             city: string;
         };
+        id: string;
+        bio: string | null;
+        photoUrl: string | null;
+        isBookable: boolean;
         services: {
             service: {
                 id: string;
                 name: string;
             };
         }[];
-        photoUrl: string | null;
-        user: {
-            id: string;
-            status: import(".prisma/client").$Enums.UserStatus;
-            firstName: string;
-            lastName: string;
-            email: string;
-            phone: string | null;
-            role: import(".prisma/client").$Enums.UserRole;
-        };
-        bio: string | null;
-        isBookable: boolean;
     }[]>;
     create(body: CreateStaffDto): Promise<{
         id: string;
+        email: string;
         firstName: string;
         lastName: string;
-        email: string;
     }>;
 }
 export {};

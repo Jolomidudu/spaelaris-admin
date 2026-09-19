@@ -22,31 +22,23 @@ export declare class PaymentsService {
         status?: PaymentStatus;
     }): Promise<{
         id: string;
+        status: import(".prisma/client").$Enums.PaymentStatus;
         reference: string;
         amountKobo: number;
-        status: import(".prisma/client").$Enums.PaymentStatus;
         method: import(".prisma/client").$Enums.PaymentMethod;
         paidAt: Date | null;
     }>;
     update(id: string, status: PaymentStatus): Promise<{
         id: string;
+        status: import(".prisma/client").$Enums.PaymentStatus;
         reference: string;
         amountKobo: number;
-        status: import(".prisma/client").$Enums.PaymentStatus;
         method: import(".prisma/client").$Enums.PaymentMethod;
         paidAt: Date | null;
         refundedAt: Date | null;
     }>;
     list(): import(".prisma/client").Prisma.PrismaPromise<{
-        id: string;
-        reference: string;
-        amountKobo: number;
-        status: import(".prisma/client").$Enums.PaymentStatus;
-        method: import(".prisma/client").$Enums.PaymentMethod;
-        paidAt: Date | null;
-        createdAt: Date;
         appointment: {
-            startsAt: Date;
             customer: {
                 firstName: string;
                 lastName: string;
@@ -55,7 +47,15 @@ export declare class PaymentsService {
             services: {
                 name: string;
             }[];
+            startsAt: Date;
         };
+        id: string;
+        status: import(".prisma/client").$Enums.PaymentStatus;
+        createdAt: Date;
         appointmentId: string;
+        reference: string;
+        amountKobo: number;
+        method: import(".prisma/client").$Enums.PaymentMethod;
+        paidAt: Date | null;
     }[]>;
 }
