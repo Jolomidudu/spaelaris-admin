@@ -9,10 +9,10 @@ export declare class AppointmentsService {
         status?: AppointmentStatus;
         notes?: string;
     }): Promise<{
-        id: string;
-        status: import(".prisma/client").$Enums.AppointmentStatus;
         startsAt: Date;
         endsAt: Date;
+        status: import(".prisma/client").$Enums.AppointmentStatus;
+        id: string;
     }>;
     create(data: {
         customerPhone: string;
@@ -25,37 +25,38 @@ export declare class AppointmentsService {
         status?: AppointmentStatus;
         notes?: string;
     }): Promise<{
-        id: string;
-        status: import(".prisma/client").$Enums.AppointmentStatus;
         startsAt: Date;
         endsAt: Date;
+        status: import(".prisma/client").$Enums.AppointmentStatus;
+        id: string;
     }>;
     list(): import(".prisma/client").Prisma.PrismaPromise<{
+        startsAt: Date;
+        endsAt: Date;
+        status: import(".prisma/client").$Enums.AppointmentStatus;
+        notes: string | null;
+        id: string;
+        customer: {
+            firstName: string;
+            lastName: string;
+            email: string | null;
+            phone: string;
+        };
         location: {
             name: string;
             city: string;
         };
+        therapist: {
+            firstName: string;
+            lastName: string;
+        } | null;
         room: {
             name: string;
         } | null;
-        customer: {
-            firstName: string;
-            lastName: string;
-            phone: string;
-        };
-        id: string;
-        status: import(".prisma/client").$Enums.AppointmentStatus;
         services: {
             name: string;
             durationMinutes: number;
             quantity: number;
         }[];
-        notes: string | null;
-        startsAt: Date;
-        endsAt: Date;
-        therapist: {
-            firstName: string;
-            lastName: string;
-        } | null;
     }[]>;
 }

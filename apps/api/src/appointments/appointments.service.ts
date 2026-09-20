@@ -2,6 +2,31 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
+const VALID_APPOINTMENT_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
+  [AppointmentStatus.PENDING]: [
+    AppointmentStatus.CONFIRMED,
+    AppointmentStatus.CANCELLED,
+    AppointmentStatus.NO_SHOW,
+  ],
+  [AppointmentStatus.CONFIRMED]: [
+    AppointmentStatus.CHECKED_IN,
+    AppointmentStatus.CANCELLED,
+    AppointmentStatus.NO_SHOW,
+  ],
+  [AppointmentStatus.CHECKED_IN]: [
+    AppointmentStatus.IN_SERVICE,
+    AppointmentStatus.CANCELLED,
+    AppointmentStatus.NO_SHOW,
+  ],
+  [AppointmentStatus.IN_SERVICE]: [
+    AppointmentStatus.COMPLETED,
+    AppointmentStatus.CANCELLED,
+  ],
+  [AppointmentStatus.COMPLETED]: [],
+  [AppointmentStatus.CANCELLED]: [],
+  [AppointmentStatus.NO_SHOW]: [],
+};
+
 @Injectable()
 export class AppointmentsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -14,10 +39,16 @@ export class AppointmentsService {
   }) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id },
-      select: { startsAt: true, endsAt: true },
+      select: { startsAt: true, endsAt: true, status: true },
     });
 
     if (!appointment) throw new BadRequestException('Appointment was not found');
+
+    if (data.status && !VALID_APPOINTMENT_TRANSITIONS[appointment.status]?.includes(data.status)) {
+      throw new BadRequestException(
+        `Appointment status cannot move from ${appointment.status} to ${data.status}`,
+      );
+    }
 
     const startsAt = data.startsAt ? new Date(data.startsAt) : appointment.startsAt;
     const endsAt = data.endsAt ? new Date(data.endsAt) : appointment.endsAt;
@@ -105,7 +136,7 @@ export class AppointmentsService {
         status: true,
         notes: true,
         customer: {
-          select: { firstName: true, lastName: true, phone: true },
+          select: { firstName: true, lastName: true, phone: true, email: true },
         },
         therapist: {
           select: { firstName: true, lastName: true },

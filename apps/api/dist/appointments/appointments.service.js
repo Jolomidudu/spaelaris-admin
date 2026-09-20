@@ -13,6 +13,30 @@ exports.AppointmentsService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../database/prisma.service");
+const VALID_APPOINTMENT_TRANSITIONS = {
+    [client_1.AppointmentStatus.PENDING]: [
+        client_1.AppointmentStatus.CONFIRMED,
+        client_1.AppointmentStatus.CANCELLED,
+        client_1.AppointmentStatus.NO_SHOW,
+    ],
+    [client_1.AppointmentStatus.CONFIRMED]: [
+        client_1.AppointmentStatus.CHECKED_IN,
+        client_1.AppointmentStatus.CANCELLED,
+        client_1.AppointmentStatus.NO_SHOW,
+    ],
+    [client_1.AppointmentStatus.CHECKED_IN]: [
+        client_1.AppointmentStatus.IN_SERVICE,
+        client_1.AppointmentStatus.CANCELLED,
+        client_1.AppointmentStatus.NO_SHOW,
+    ],
+    [client_1.AppointmentStatus.IN_SERVICE]: [
+        client_1.AppointmentStatus.COMPLETED,
+        client_1.AppointmentStatus.CANCELLED,
+    ],
+    [client_1.AppointmentStatus.COMPLETED]: [],
+    [client_1.AppointmentStatus.CANCELLED]: [],
+    [client_1.AppointmentStatus.NO_SHOW]: [],
+};
 let AppointmentsService = class AppointmentsService {
     constructor(prisma) {
         this.prisma = prisma;
@@ -20,10 +44,13 @@ let AppointmentsService = class AppointmentsService {
     async update(id, data) {
         const appointment = await this.prisma.appointment.findUnique({
             where: { id },
-            select: { startsAt: true, endsAt: true },
+            select: { startsAt: true, endsAt: true, status: true },
         });
         if (!appointment)
             throw new common_1.BadRequestException('Appointment was not found');
+        if (data.status && !VALID_APPOINTMENT_TRANSITIONS[appointment.status]?.includes(data.status)) {
+            throw new common_1.BadRequestException(`Appointment status cannot move from ${appointment.status} to ${data.status}`);
+        }
         const startsAt = data.startsAt ? new Date(data.startsAt) : appointment.startsAt;
         const endsAt = data.endsAt ? new Date(data.endsAt) : appointment.endsAt;
         if (endsAt <= startsAt)
@@ -98,7 +125,7 @@ let AppointmentsService = class AppointmentsService {
                 status: true,
                 notes: true,
                 customer: {
-                    select: { firstName: true, lastName: true, phone: true },
+                    select: { firstName: true, lastName: true, phone: true, email: true },
                 },
                 therapist: {
                     select: { firstName: true, lastName: true },
