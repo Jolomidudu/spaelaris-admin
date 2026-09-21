@@ -14,7 +14,10 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const headers = request.headers as unknown as Record<string, string | string[] | undefined>;
-    const authorization = headers.authorization;
+    const authorizationHeader = headers.authorization;
+    const authorization = Array.isArray(authorizationHeader)
+      ? authorizationHeader[0]
+      : authorizationHeader;
     const token = authorization?.startsWith('Bearer ')
       ? authorization.slice(7)
       : undefined;
