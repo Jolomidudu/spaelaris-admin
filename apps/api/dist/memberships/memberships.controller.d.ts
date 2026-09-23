@@ -9,10 +9,10 @@ export declare class MembershipsController {
     private readonly membershipsService;
     constructor(membershipsService: MembershipsService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
-        id: string;
         startsAt: Date;
         endsAt: Date | null;
         status: import(".prisma/client").$Enums.MembershipStatus;
+        id: string;
         customer: {
             id: string;
             firstName: string;
@@ -28,10 +28,10 @@ export declare class MembershipsController {
         };
     }[]>;
     create(body: CreateMembershipDto): Promise<{
-        id: string;
         startsAt: Date;
         endsAt: Date | null;
         status: import(".prisma/client").$Enums.MembershipStatus;
+        id: string;
         customer: {
             id: string;
             firstName: string;

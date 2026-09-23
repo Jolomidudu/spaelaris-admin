@@ -17,6 +17,9 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const class_validator_1 = require("class-validator");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const permissions_1 = require("../auth/permissions");
+const permissions_guard_1 = require("../auth/permissions.guard");
+const require_permissions_decorator_1 = require("../auth/require-permissions.decorator");
 const payments_service_1 = require("./payments.service");
 class CreatePaymentDto {
 }
@@ -105,7 +108,8 @@ __decorate([
 ], PaymentsController.prototype, "update", null);
 exports.PaymentsController = PaymentsController = __decorate([
     (0, common_1.Controller)('payments'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)(permissions_1.Permission.ManagePayments),
     __metadata("design:paramtypes", [payments_service_1.PaymentsService])
 ], PaymentsController);
 //# sourceMappingURL=payments.controller.js.map

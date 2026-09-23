@@ -9,9 +9,6 @@ export declare class RoomsController {
     constructor(roomsService: RoomsService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
-        name: string;
-        description: string | null;
-        isActive: boolean;
         location: {
             id: string;
             name: string;
@@ -21,12 +18,12 @@ export declare class RoomsController {
         _count: {
             appointments: number;
         };
+        name: string;
+        isActive: boolean;
+        description: string | null;
     }[]>;
     create(body: CreateRoomDto): Promise<{
         id: string;
-        name: string;
-        description: string | null;
-        isActive: boolean;
         location: {
             id: string;
             name: string;
@@ -36,6 +33,9 @@ export declare class RoomsController {
         _count: {
             appointments: number;
         };
+        name: string;
+        isActive: boolean;
+        description: string | null;
     }>;
 }
 export {};

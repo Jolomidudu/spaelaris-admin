@@ -17,7 +17,9 @@ export declare class PaymentsController {
     private readonly paymentsService;
     constructor(paymentsService: PaymentsService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
+        status: import(".prisma/client").$Enums.PaymentStatus;
         appointment: {
+            startsAt: Date;
             customer: {
                 firstName: string;
                 lastName: string;
@@ -26,10 +28,8 @@ export declare class PaymentsController {
             services: {
                 name: string;
             }[];
-            startsAt: Date;
         };
         id: string;
-        status: import(".prisma/client").$Enums.PaymentStatus;
         createdAt: Date;
         appointmentId: string;
         reference: string;
@@ -38,8 +38,8 @@ export declare class PaymentsController {
         paidAt: Date | null;
     }[]>;
     create(body: CreatePaymentDto): Promise<{
-        id: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
+        id: string;
         reference: string;
         amountKobo: number;
         method: import(".prisma/client").$Enums.PaymentMethod;
@@ -47,8 +47,8 @@ export declare class PaymentsController {
     }>;
     initialize(body: InitializePaymentDto): Promise<unknown>;
     update(id: string, body: UpdatePaymentDto): Promise<{
-        id: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
+        id: string;
         reference: string;
         amountKobo: number;
         method: import(".prisma/client").$Enums.PaymentMethod;

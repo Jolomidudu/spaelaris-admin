@@ -10,12 +10,8 @@ export declare class PackagesController {
     private readonly packagesService;
     constructor(packagesService: PackagesService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
-        id: string;
-        name: string;
-        description: string | null;
-        priceKobo: number;
         status: import(".prisma/client").$Enums.PackageStatus;
-        validityDays: number | null;
+        id: string;
         services: {
             quantity: number;
             service: {
@@ -27,14 +23,14 @@ export declare class PackagesController {
         _count: {
             memberships: number;
         };
+        name: string;
+        description: string | null;
+        priceKobo: number;
+        validityDays: number | null;
     }[]>;
     create(body: CreatePackageDto): Promise<{
-        id: string;
-        name: string;
-        description: string | null;
-        priceKobo: number;
         status: import(".prisma/client").$Enums.PackageStatus;
-        validityDays: number | null;
+        id: string;
         services: {
             quantity: number;
             service: {
@@ -46,6 +42,10 @@ export declare class PackagesController {
         _count: {
             memberships: number;
         };
+        name: string;
+        description: string | null;
+        priceKobo: number;
+        validityDays: number | null;
     }>;
 }
 export {};

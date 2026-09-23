@@ -13,10 +13,10 @@ export declare class ServicesController {
         id: string;
         name: string;
         slug: string;
+        isActive: boolean;
         description: string | null;
         durationMinutes: number;
         priceKobo: number;
-        isActive: boolean;
         category: {
             id: string;
             name: string;
@@ -32,10 +32,10 @@ export declare class ServicesController {
         id: string;
         name: string;
         slug: string;
+        isActive: boolean;
         description: string | null;
         durationMinutes: number;
         priceKobo: number;
-        isActive: boolean;
         category: {
             id: string;
             name: string;

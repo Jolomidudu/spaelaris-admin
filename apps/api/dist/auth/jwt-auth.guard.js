@@ -18,7 +18,11 @@ let JwtAuthGuard = class JwtAuthGuard {
     }
     async canActivate(context) {
         const request = context.switchToHttp().getRequest();
-        const authorization = request.headers.get('authorization');
+        const headers = request.headers;
+        const authorizationHeader = headers.authorization;
+        const authorization = Array.isArray(authorizationHeader)
+            ? authorizationHeader[0]
+            : authorizationHeader;
         const token = authorization?.startsWith('Bearer ')
             ? authorization.slice(7)
             : undefined;
