@@ -2,6 +2,9 @@ import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/co
 import { AppointmentStatus } from '@prisma/client';
 import { IsDateString, IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Permission } from '../auth/permissions';
+import { PermissionsGuard } from '../auth/permissions.guard';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { AppointmentsService } from './appointments.service';
 
 class CreateAppointmentDto {
@@ -69,11 +72,15 @@ export class AppointmentsController {
   }
 
   @Post()
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions(Permission.ManageAppointments)
   create(@Body() body: CreateAppointmentDto) {
     return this.appointmentsService.create(body);
   }
 
   @Patch(':id')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions(Permission.ManageAppointments)
   update(@Param('id') id: string, @Body() body: UpdateAppointmentDto) {
     return this.appointmentsService.update(id, body);
   }

@@ -2,6 +2,9 @@ import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/co
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
 import { IsEmail, IsEnum, IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Permission } from '../auth/permissions';
+import { PermissionsGuard } from '../auth/permissions.guard';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { PaymentsService } from './payments.service';
 
 class CreatePaymentDto {
@@ -47,16 +50,22 @@ export class PaymentsController {
   }
 
   @Post()
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions(Permission.ManagePayments)
   create(@Body() body: CreatePaymentDto) {
     return this.paymentsService.create(body);
   }
 
   @Post('initialize')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions(Permission.ManagePayments)
   initialize(@Body() body: InitializePaymentDto) {
     return this.paymentsService.initialize(body);
   }
 
   @Patch(':id')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions(Permission.ManagePayments)
   update(@Param('id') id: string, @Body() body: UpdatePaymentDto) {
     return this.paymentsService.update(id, body.status);
   }

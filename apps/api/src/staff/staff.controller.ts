@@ -1,6 +1,9 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Permission } from '../auth/permissions';
+import { PermissionsGuard } from '../auth/permissions.guard';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { StaffService } from './staff.service';
 
 class CreateStaffDto {
@@ -39,6 +42,8 @@ export class StaffController {
   }
 
   @Post()
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions(Permission.ManageUsers)
   create(@Body() body: CreateStaffDto) {
     return this.staffService.create(body);
   }
