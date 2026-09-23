@@ -14,6 +14,7 @@ var Permission;
     Permission["ManageAppointments"] = "manage:appointments";
     Permission["ManagePayments"] = "manage:payments";
     Permission["ManageMemberships"] = "manage:memberships";
+    Permission["ManagePackages"] = "manage:packages";
     Permission["ViewReports"] = "view:reports";
     Permission["ManageOwnSchedule"] = "manage:own-schedule";
     Permission["UpdateAssignedAppointments"] = "update:assigned-appointments";
@@ -28,6 +29,7 @@ const rolePermissions = {
         Permission.ManageAppointments,
         Permission.ManagePayments,
         Permission.ManageMemberships,
+        Permission.ManagePackages,
         Permission.ViewReports,
         Permission.ManageOwnSchedule,
     ]),

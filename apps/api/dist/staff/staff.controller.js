@@ -16,6 +16,9 @@ exports.StaffController = void 0;
 const common_1 = require("@nestjs/common");
 const class_validator_1 = require("class-validator");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const permissions_1 = require("../auth/permissions");
+const permissions_guard_1 = require("../auth/permissions.guard");
+const require_permissions_decorator_1 = require("../auth/require-permissions.decorator");
 const staff_service_1 = require("./staff.service");
 class CreateStaffDto {
 }
@@ -75,7 +78,8 @@ __decorate([
 ], StaffController.prototype, "create", null);
 exports.StaffController = StaffController = __decorate([
     (0, common_1.Controller)('staff'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)(permissions_1.Permission.ManageUsers),
     __metadata("design:paramtypes", [staff_service_1.StaffService])
 ], StaffController);
 //# sourceMappingURL=staff.controller.js.map

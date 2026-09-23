@@ -1,6 +1,9 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Permission } from '../auth/permissions';
+import { PermissionsGuard } from '../auth/permissions.guard';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { RoomsService } from './rooms.service';
 
 class CreateRoomDto {
@@ -18,7 +21,8 @@ class CreateRoomDto {
 }
 
 @Controller('rooms')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermissions(Permission.ManageRooms)
 export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
 

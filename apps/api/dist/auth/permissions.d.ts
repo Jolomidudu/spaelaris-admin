@@ -8,6 +8,7 @@ export declare enum Permission {
     ManageAppointments = "manage:appointments",
     ManagePayments = "manage:payments",
     ManageMemberships = "manage:memberships",
+    ManagePackages = "manage:packages",
     ViewReports = "view:reports",
     ManageOwnSchedule = "manage:own-schedule",
     UpdateAssignedAppointments = "update:assigned-appointments"

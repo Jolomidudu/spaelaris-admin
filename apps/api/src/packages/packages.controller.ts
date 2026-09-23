@@ -1,6 +1,9 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { IsArray, IsInt, IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Permission } from '../auth/permissions';
+import { PermissionsGuard } from '../auth/permissions.guard';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { PackagesService } from './packages.service';
 
 class CreatePackageDto {
@@ -27,7 +30,8 @@ class CreatePackageDto {
 }
 
 @Controller('packages')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermissions(Permission.ManagePackages)
 export class PackagesController {
   constructor(private readonly packagesService: PackagesService) {}
 

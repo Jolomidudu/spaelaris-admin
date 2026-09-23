@@ -16,6 +16,9 @@ exports.PackagesController = void 0;
 const common_1 = require("@nestjs/common");
 const class_validator_1 = require("class-validator");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const permissions_1 = require("../auth/permissions");
+const permissions_guard_1 = require("../auth/permissions.guard");
+const require_permissions_decorator_1 = require("../auth/require-permissions.decorator");
 const packages_service_1 = require("./packages.service");
 class CreatePackageDto {
 }
@@ -72,7 +75,8 @@ __decorate([
 ], PackagesController.prototype, "create", null);
 exports.PackagesController = PackagesController = __decorate([
     (0, common_1.Controller)('packages'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)(permissions_1.Permission.ManagePackages),
     __metadata("design:paramtypes", [packages_service_1.PackagesService])
 ], PackagesController);
 //# sourceMappingURL=packages.controller.js.map

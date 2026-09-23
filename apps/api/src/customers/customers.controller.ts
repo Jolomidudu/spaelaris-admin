@@ -1,6 +1,9 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Permission } from '../auth/permissions';
+import { PermissionsGuard } from '../auth/permissions.guard';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { CustomersService } from './customers.service';
 
 class CreateCustomerDto {
@@ -22,7 +25,8 @@ class CreateCustomerDto {
 }
 
 @Controller('customers')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermissions(Permission.ManageCustomers)
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
