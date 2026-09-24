@@ -54,7 +54,7 @@ __decorate([
 ], CreateStaffDto.prototype, "serviceSlugs", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEnum)(client_1.UserRole),
+    (0, class_validator_1.IsIn)([client_1.UserRole.MANAGER, client_1.UserRole.RECEPTIONIST, client_1.UserRole.THERAPIST]),
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "role", void 0);
 __decorate([
@@ -63,6 +63,17 @@ __decorate([
     (0, class_validator_1.MinLength)(8),
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "initialPassword", void 0);
+class UpdateStaffAccessDto {
+}
+__decorate([
+    (0, class_validator_1.IsIn)([client_1.UserRole.MANAGER, client_1.UserRole.RECEPTIONIST, client_1.UserRole.THERAPIST]),
+    __metadata("design:type", String)
+], UpdateStaffAccessDto.prototype, "role", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(8),
+    __metadata("design:type", String)
+], UpdateStaffAccessDto.prototype, "password", void 0);
 let StaffController = class StaffController {
     constructor(staffService) {
         this.staffService = staffService;
@@ -72,6 +83,9 @@ let StaffController = class StaffController {
     }
     create(body) {
         return this.staffService.create(body);
+    }
+    updateAccess(id, body) {
+        return this.staffService.updateAccess(id, body);
     }
 };
 exports.StaffController = StaffController;
@@ -88,6 +102,14 @@ __decorate([
     __metadata("design:paramtypes", [CreateStaffDto]),
     __metadata("design:returntype", void 0)
 ], StaffController.prototype, "create", null);
+__decorate([
+    (0, common_1.Patch)(':id/access'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateStaffAccessDto]),
+    __metadata("design:returntype", void 0)
+], StaffController.prototype, "updateAccess", null);
 exports.StaffController = StaffController = __decorate([
     (0, common_1.Controller)('staff'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),

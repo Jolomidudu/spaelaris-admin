@@ -10,6 +10,10 @@ declare class CreateStaffDto {
     role?: UserRole;
     initialPassword?: string;
 }
+declare class UpdateStaffAccessDto {
+    role: UserRole;
+    password: string;
+}
 export declare class StaffController {
     private readonly staffService;
     constructor(staffService: StaffService);
@@ -44,6 +48,14 @@ export declare class StaffController {
         lastName: string;
         email: string;
         id: string;
+    }>;
+    updateAccess(id: string, body: UpdateStaffAccessDto): Promise<{
+        firstName: string;
+        lastName: string;
+        email: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        id: string;
+        status: import(".prisma/client").$Enums.UserStatus;
     }>;
 }
 export {};

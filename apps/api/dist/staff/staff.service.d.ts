@@ -18,6 +18,17 @@ export declare class StaffService {
         email: string;
         id: string;
     }>;
+    updateAccess(id: string, data: {
+        role: UserRole;
+        password: string;
+    }): Promise<{
+        firstName: string;
+        lastName: string;
+        email: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        id: string;
+        status: import(".prisma/client").$Enums.UserStatus;
+    }>;
     list(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
         bio: string | null;
