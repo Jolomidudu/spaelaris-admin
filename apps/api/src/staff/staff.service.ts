@@ -67,6 +67,21 @@ export class StaffService {
     return user;
   }
 
+  async updateAccess(id: string, data: { role: UserRole; password: string }) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new BadRequestException('Staff user was not found');
+
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        role: data.role,
+        status: 'ACTIVE',
+        passwordHash: await bcrypt.hash(data.password, 12),
+      },
+      select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true },
+    });
+  }
+
   list() {
     return this.prisma.staffProfile.findMany({
       where: {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -41,6 +41,15 @@ class CreateStaffDto {
   initialPassword?: string;
 }
 
+class UpdateStaffAccessDto {
+  @IsIn([UserRole.MANAGER, UserRole.RECEPTIONIST, UserRole.THERAPIST])
+  role!: UserRole;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+}
+
 @Controller('staff')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions(Permission.ManageUsers)
@@ -55,5 +64,10 @@ export class StaffController {
   @Post()
   create(@Body() body: CreateStaffDto) {
     return this.staffService.create(body);
+  }
+
+  @Patch(':id/access')
+  updateAccess(@Param('id') id: string, @Body() body: UpdateStaffAccessDto) {
+    return this.staffService.updateAccess(id, body);
   }
 }
