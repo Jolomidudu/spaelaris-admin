@@ -1,4 +1,6 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
@@ -12,6 +14,8 @@ export class StaffService {
     phone?: string;
     locationSlug: string;
     serviceSlugs: string[];
+    role?: UserRole;
+    initialPassword?: string;
   }) {
     const location = await this.prisma.location.findUnique({ where: { slug: data.locationSlug } });
     if (!location) {
@@ -27,6 +31,11 @@ export class StaffService {
       throw new BadRequestException('One or more services were not found');
     }
 
+    const role = data.role ?? UserRole.THERAPIST;
+    if (role !== UserRole.THERAPIST && !data.initialPassword) {
+      throw new BadRequestException('An initial password is required for admin staff accounts');
+    }
+
     const existingUser = await this.prisma.user.findUnique({ where: { email: data.email.trim().toLowerCase() } });
     if (existingUser) {
       throw new ConflictException('A user with this email already exists');
@@ -38,8 +47,11 @@ export class StaffService {
         lastName: data.lastName.trim(),
         email: data.email.trim().toLowerCase(),
         phone: data.phone?.trim() || undefined,
-        role: 'THERAPIST',
+        role,
         status: 'ACTIVE',
+        passwordHash: data.initialPassword
+          ? await bcrypt.hash(data.initialPassword, 12)
+          : undefined,
         staffProfile: {
           create: {
             locationId: location.id,

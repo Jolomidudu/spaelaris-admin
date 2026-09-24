@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Permission } from '../auth/permissions';
@@ -29,6 +30,15 @@ class CreateStaffDto {
   @IsString({ each: true })
   @IsIn(['deep-tissue-massage', 'glow-facial', 'aromatherapy'], { each: true })
   serviceSlugs!: string[];
+
+  @IsOptional()
+  @IsIn([UserRole.MANAGER, UserRole.RECEPTIONIST, UserRole.THERAPIST])
+  role?: UserRole;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  initialPassword?: string;
 }
 
 @Controller('staff')

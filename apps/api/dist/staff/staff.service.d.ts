@@ -1,3 +1,4 @@
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 export declare class StaffService {
     private readonly prisma;
@@ -9,20 +10,26 @@ export declare class StaffService {
         phone?: string;
         locationSlug: string;
         serviceSlugs: string[];
+        role?: UserRole;
+        initialPassword?: string;
     }): Promise<{
-        id: string;
-        email: string;
         firstName: string;
         lastName: string;
+        email: string;
+        id: string;
     }>;
     list(): import(".prisma/client").Prisma.PrismaPromise<{
+        id: string;
+        bio: string | null;
+        photoUrl: string | null;
+        isBookable: boolean;
         user: {
-            id: string;
-            email: string;
             firstName: string;
             lastName: string;
+            email: string;
             phone: string | null;
             role: import(".prisma/client").$Enums.UserRole;
+            id: string;
             status: import(".prisma/client").$Enums.UserStatus;
         };
         location: {
@@ -30,10 +37,6 @@ export declare class StaffService {
             name: string;
             city: string;
         };
-        id: string;
-        bio: string | null;
-        photoUrl: string | null;
-        isBookable: boolean;
         services: {
             service: {
                 id: string;

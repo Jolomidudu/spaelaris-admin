@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StaffController = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 const class_validator_1 = require("class-validator");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const permissions_1 = require("../auth/permissions");
@@ -51,6 +52,17 @@ __decorate([
     (0, class_validator_1.IsIn)(['deep-tissue-massage', 'glow-facial', 'aromatherapy'], { each: true }),
     __metadata("design:type", Array)
 ], CreateStaffDto.prototype, "serviceSlugs", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(client_1.UserRole),
+    __metadata("design:type", String)
+], CreateStaffDto.prototype, "role", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(8),
+    __metadata("design:type", String)
+], CreateStaffDto.prototype, "initialPassword", void 0);
 let StaffController = class StaffController {
     constructor(staffService) {
         this.staffService = staffService;

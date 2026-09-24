@@ -11,6 +11,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StaffService = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
+const bcrypt = require("bcrypt");
 const prisma_service_1 = require("../database/prisma.service");
 let StaffService = class StaffService {
     constructor(prisma) {
@@ -28,6 +30,10 @@ let StaffService = class StaffService {
         if (services.length !== data.serviceSlugs.length) {
             throw new common_1.BadRequestException('One or more services were not found');
         }
+        const role = data.role ?? client_1.UserRole.THERAPIST;
+        if (role !== client_1.UserRole.THERAPIST && !data.initialPassword) {
+            throw new common_1.BadRequestException('An initial password is required for admin staff accounts');
+        }
         const existingUser = await this.prisma.user.findUnique({ where: { email: data.email.trim().toLowerCase() } });
         if (existingUser) {
             throw new common_1.ConflictException('A user with this email already exists');
@@ -38,8 +44,11 @@ let StaffService = class StaffService {
                 lastName: data.lastName.trim(),
                 email: data.email.trim().toLowerCase(),
                 phone: data.phone?.trim() || undefined,
-                role: 'THERAPIST',
+                role,
                 status: 'ACTIVE',
+                passwordHash: data.initialPassword
+                    ? await bcrypt.hash(data.initialPassword, 12)
+                    : undefined,
                 staffProfile: {
                     create: {
                         locationId: location.id,
