@@ -84,11 +84,11 @@ const othersItems: NavItem[] = [
     name: "My profile",
     path: "/profile",
   },
-  {
-    icon: <PlugInIcon />,
-    name: "Sign out",
-    path: "/signin",
-  },
+  // {
+  //   icon: <PlugInIcon />,
+  //   name: "Sign out",
+  //   path: "/signin",
+  // },
 ];
 
 const AppSidebar: React.FC = () => {

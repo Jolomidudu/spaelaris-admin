@@ -6,7 +6,9 @@ import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 import { API_BASE_URL } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+
+type ServiceCategory = { id: string; name: string };
 
 const initialServices = [
   {
@@ -68,6 +70,16 @@ export default function ServicesPage() {
   const [categoryId, setCategoryId] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("60");
   const [priceNaira, setPriceNaira] = useState("25000");
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/services/categories`, { headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` } })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load service categories.");
+        setCategories((await response.json()) as ServiceCategory[]);
+      })
+      .catch((error) => setCreateError(error instanceof Error ? error.message : "Unable to load service categories."));
+  }, []);
 
   async function createService(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -164,7 +176,7 @@ export default function ServicesPage() {
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">Add service</h2>
             {createError && <p className="rounded-lg bg-error-50 px-3 py-2 text-sm text-error-600">{createError}</p>}
             <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Service name" className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
-            <input required value={categoryId} onChange={(event) => setCategoryId(event.target.value)} placeholder="Category ID" className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+            <select required value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="">Select category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
             <div className="grid grid-cols-2 gap-4"><input required type="number" min="1" value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} placeholder="Duration (minutes)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /><input required type="number" min="0" value={priceNaira} onChange={(event) => setPriceNaira(event.target.value)} placeholder="Price (NGN)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></div>
             <div className="flex justify-end gap-3"><button type="button" onClick={() => setIsCreateOpen(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-700">Cancel</button><Button size="sm" type="submit" disabled={isCreating}>{isCreating ? "Creating..." : "Create service"}</Button></div>
           </form>
