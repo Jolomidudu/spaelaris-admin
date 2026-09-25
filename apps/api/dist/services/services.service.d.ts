@@ -6,16 +6,53 @@ export declare class ServicesService {
         id: string;
         name: string;
         slug: string;
-        description: string | null;
-        durationMinutes: number;
-        priceKobo: number;
         isActive: boolean;
+        description: string | null;
+        durationMinutes: number | null;
+        priceKobo: number;
         category: {
             id: string;
             name: string;
             slug: string;
         };
     }[]>;
+    createCategory(data: {
+        name: string;
+        description?: string;
+    }): Promise<{
+        id: string;
+        name: string;
+        slug: string;
+        description: string | null;
+    }>;
+    update(id: string, data: {
+        name?: string;
+        categoryId?: string;
+        description?: string;
+        durationMinutes?: number;
+        priceNaira?: number;
+    }): Promise<{
+        id: string;
+        name: string;
+        slug: string;
+        isActive: boolean;
+        description: string | null;
+        durationMinutes: number | null;
+        priceKobo: number;
+        category: {
+            id: string;
+            name: string;
+            slug: string;
+        };
+    }>;
+    remove(id: string): Promise<{
+        success: boolean;
+        service: {
+            id: string;
+            name: string;
+            isActive: boolean;
+        };
+    }>;
     create(data: {
         name: string;
         categoryId: string;
@@ -26,10 +63,10 @@ export declare class ServicesService {
         id: string;
         name: string;
         slug: string;
-        description: string | null;
-        durationMinutes: number;
-        priceKobo: number;
         isActive: boolean;
+        description: string | null;
+        durationMinutes: number | null;
+        priceKobo: number;
         category: {
             id: string;
             name: string;

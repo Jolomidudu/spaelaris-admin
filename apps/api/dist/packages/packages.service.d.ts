@@ -3,12 +3,8 @@ export declare class PackagesService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
-        id: string;
-        name: string;
-        description: string | null;
-        priceKobo: number;
         status: import(".prisma/client").$Enums.PackageStatus;
-        validityDays: number | null;
+        id: string;
         services: {
             quantity: number;
             service: {
@@ -20,6 +16,10 @@ export declare class PackagesService {
         _count: {
             memberships: number;
         };
+        name: string;
+        description: string | null;
+        priceKobo: number;
+        validityDays: number | null;
     }[]>;
     create(data: {
         name: string;
@@ -28,12 +28,8 @@ export declare class PackagesService {
         validityDays?: number;
         serviceSlugs: string[];
     }): Promise<{
-        id: string;
-        name: string;
-        description: string | null;
-        priceKobo: number;
         status: import(".prisma/client").$Enums.PackageStatus;
-        validityDays: number | null;
+        id: string;
         services: {
             quantity: number;
             service: {
@@ -45,5 +41,9 @@ export declare class PackagesService {
         _count: {
             memberships: number;
         };
+        name: string;
+        description: string | null;
+        priceKobo: number;
+        validityDays: number | null;
     }>;
 }

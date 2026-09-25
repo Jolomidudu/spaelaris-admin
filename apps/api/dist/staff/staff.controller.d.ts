@@ -19,18 +19,6 @@ export declare class StaffController {
     constructor(staffService: StaffService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
-        bio: string | null;
-        photoUrl: string | null;
-        isBookable: boolean;
-        user: {
-            firstName: string;
-            lastName: string;
-            email: string;
-            phone: string | null;
-            role: import(".prisma/client").$Enums.UserRole;
-            id: string;
-            status: import(".prisma/client").$Enums.UserStatus;
-        };
         location: {
             id: string;
             name: string;
@@ -42,20 +30,32 @@ export declare class StaffController {
                 name: string;
             };
         }[];
+        photoUrl: string | null;
+        user: {
+            status: import(".prisma/client").$Enums.UserStatus;
+            id: string;
+            firstName: string;
+            lastName: string;
+            email: string;
+            phone: string | null;
+            role: import(".prisma/client").$Enums.UserRole;
+        };
+        bio: string | null;
+        isBookable: boolean;
     }[]>;
     create(body: CreateStaffDto): Promise<{
+        id: string;
         firstName: string;
         lastName: string;
         email: string;
-        id: string;
     }>;
     updateAccess(id: string, body: UpdateStaffAccessDto): Promise<{
+        status: import(".prisma/client").$Enums.UserStatus;
+        id: string;
         firstName: string;
         lastName: string;
         email: string;
         role: import(".prisma/client").$Enums.UserRole;
-        id: string;
-        status: import(".prisma/client").$Enums.UserStatus;
     }>;
 }
 export {};

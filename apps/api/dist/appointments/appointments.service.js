@@ -107,7 +107,7 @@ let AppointmentsService = class AppointmentsService {
                     create: {
                         serviceId: service.id,
                         name: service.name,
-                        durationMinutes: service.durationMinutes,
+                        durationMinutes: service.durationMinutes ?? Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000),
                         unitPriceKobo: service.priceKobo,
                     },
                 },

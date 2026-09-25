@@ -3,10 +3,10 @@ export declare class MembershipsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
-        id: string;
         startsAt: Date;
         endsAt: Date | null;
         status: import(".prisma/client").$Enums.MembershipStatus;
+        id: string;
         customer: {
             id: string;
             firstName: string;
@@ -27,10 +27,10 @@ export declare class MembershipsService {
         startsAt: string;
         validityDays?: number;
     }): Promise<{
-        id: string;
         startsAt: Date;
         endsAt: Date | null;
         status: import(".prisma/client").$Enums.MembershipStatus;
+        id: string;
         customer: {
             id: string;
             firstName: string;

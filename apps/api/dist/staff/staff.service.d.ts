@@ -13,36 +13,24 @@ export declare class StaffService {
         role?: UserRole;
         initialPassword?: string;
     }): Promise<{
+        id: string;
         firstName: string;
         lastName: string;
         email: string;
-        id: string;
     }>;
     updateAccess(id: string, data: {
         role: UserRole;
         password: string;
     }): Promise<{
+        status: import(".prisma/client").$Enums.UserStatus;
+        id: string;
         firstName: string;
         lastName: string;
         email: string;
         role: import(".prisma/client").$Enums.UserRole;
-        id: string;
-        status: import(".prisma/client").$Enums.UserStatus;
     }>;
     list(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
-        bio: string | null;
-        photoUrl: string | null;
-        isBookable: boolean;
-        user: {
-            firstName: string;
-            lastName: string;
-            email: string;
-            phone: string | null;
-            role: import(".prisma/client").$Enums.UserRole;
-            id: string;
-            status: import(".prisma/client").$Enums.UserStatus;
-        };
         location: {
             id: string;
             name: string;
@@ -54,5 +42,17 @@ export declare class StaffService {
                 name: string;
             };
         }[];
+        photoUrl: string | null;
+        user: {
+            status: import(".prisma/client").$Enums.UserStatus;
+            id: string;
+            firstName: string;
+            lastName: string;
+            email: string;
+            phone: string | null;
+            role: import(".prisma/client").$Enums.UserRole;
+        };
+        bio: string | null;
+        isBookable: boolean;
     }[]>;
 }

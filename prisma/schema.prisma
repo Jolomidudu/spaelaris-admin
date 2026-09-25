@@ -115,6 +115,14 @@ model StaffProfile {
   locationId   String
   bio          String?
   photoUrl     String?
+  publicSlug   String?             @unique
+  displayTitle String?
+  rating       Float?
+  reviewCount  Int?
+  completedAppointments Int?
+  clientsServed Int?
+  languages    String[]            @default([])
+  isPubliclyListed Boolean         @default(false)
   isBookable   Boolean             @default(true)
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -149,6 +157,9 @@ model ServiceCategory {
   name        String
   slug        String    @unique
   description String?
+  number      String?
+  shortName   String?
+  imageUrl    String?
   sortOrder   Int       @default(0)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
@@ -162,7 +173,10 @@ model Service {
   name             String
   slug             String               @unique
   description      String?
-  durationMinutes  Int
+  details          String?
+  benefits         String[]             @default([])
+  includes         String[]             @default([])
+  durationMinutes  Int?
   priceKobo        Int
   photoUrl         String?
   isActive         Boolean              @default(true)

@@ -32,6 +32,81 @@ let ServicesService = class ServicesService {
             },
         });
     }
+    async createCategory(data) {
+        const name = data.name.trim();
+        if (!name)
+            throw new common_1.BadRequestException('Category name is required');
+        const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`;
+        const existing = await this.prisma.serviceCategory.findUnique({ where: { slug } });
+        if (existing) {
+            throw new common_1.BadRequestException('A category with this name already exists');
+        }
+        return this.prisma.serviceCategory.create({
+            data: {
+                name,
+                slug,
+                description: data.description?.trim() || undefined,
+            },
+            select: { id: true, name: true, slug: true, description: true },
+        });
+    }
+    async update(id, data) {
+        const service = await this.prisma.service.findUnique({
+            where: { id },
+            select: { id: true, name: true, categoryId: true, description: true, durationMinutes: true, priceKobo: true },
+        });
+        if (!service) {
+            throw new common_1.BadRequestException('Service was not found');
+        }
+        if (data.categoryId) {
+            const category = await this.prisma.serviceCategory.findUnique({ where: { id: data.categoryId } });
+            if (!category || !category.isActive) {
+                throw new common_1.BadRequestException('Service category was not found');
+            }
+        }
+        const nextName = data.name?.trim();
+        if (nextName !== undefined && !nextName) {
+            throw new common_1.BadRequestException('Service name is required');
+        }
+        if (data.durationMinutes !== undefined && data.durationMinutes < 1) {
+            throw new common_1.BadRequestException('Duration must be at least one minute');
+        }
+        if (data.priceNaira !== undefined && data.priceNaira < 0) {
+            throw new common_1.BadRequestException('Price cannot be negative');
+        }
+        return this.prisma.service.update({
+            where: { id },
+            data: {
+                name: nextName,
+                categoryId: data.categoryId,
+                description: data.description === undefined ? undefined : data.description.trim() || null,
+                durationMinutes: data.durationMinutes,
+                priceKobo: data.priceNaira === undefined ? undefined : Math.round(data.priceNaira * 100),
+            },
+            select: {
+                id: true,
+                name: true,
+                slug: true,
+                description: true,
+                durationMinutes: true,
+                priceKobo: true,
+                isActive: true,
+                category: { select: { id: true, name: true, slug: true } },
+            },
+        });
+    }
+    async remove(id) {
+        const service = await this.prisma.service.findUnique({ where: { id } });
+        if (!service) {
+            throw new common_1.BadRequestException('Service was not found');
+        }
+        const updated = await this.prisma.service.update({
+            where: { id },
+            data: { isActive: false },
+            select: { id: true, name: true, isActive: true },
+        });
+        return { success: true, service: updated };
+    }
     async create(data) {
         const category = await this.prisma.serviceCategory.findUnique({
             where: { id: data.categoryId },

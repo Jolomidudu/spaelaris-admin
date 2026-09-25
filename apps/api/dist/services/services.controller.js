@@ -20,6 +20,18 @@ const permissions_1 = require("../auth/permissions");
 const permissions_guard_1 = require("../auth/permissions.guard");
 const require_permissions_decorator_1 = require("../auth/require-permissions.decorator");
 const services_service_1 = require("./services.service");
+class CreateServiceCategoryDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(2),
+    __metadata("design:type", String)
+], CreateServiceCategoryDto.prototype, "name", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateServiceCategoryDto.prototype, "description", void 0);
 class CreateServiceDto {
 }
 __decorate([
@@ -47,6 +59,37 @@ __decorate([
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], CreateServiceDto.prototype, "priceNaira", void 0);
+class UpdateServiceDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], UpdateServiceDto.prototype, "name", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], UpdateServiceDto.prototype, "categoryId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateServiceDto.prototype, "description", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], UpdateServiceDto.prototype, "durationMinutes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateServiceDto.prototype, "priceNaira", void 0);
 let ServicesController = class ServicesController {
     constructor(servicesService) {
         this.servicesService = servicesService;
@@ -57,8 +100,17 @@ let ServicesController = class ServicesController {
     categories() {
         return this.servicesService.categories();
     }
+    createCategory(body) {
+        return this.servicesService.createCategory(body);
+    }
     create(body) {
         return this.servicesService.create(body);
+    }
+    update(id, body) {
+        return this.servicesService.update(id, body);
+    }
+    remove(id) {
+        return this.servicesService.remove(id);
     }
 };
 exports.ServicesController = ServicesController;
@@ -75,12 +127,34 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ServicesController.prototype, "categories", null);
 __decorate([
+    (0, common_1.Post)('categories'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [CreateServiceCategoryDto]),
+    __metadata("design:returntype", void 0)
+], ServicesController.prototype, "createCategory", null);
+__decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [CreateServiceDto]),
     __metadata("design:returntype", void 0)
 ], ServicesController.prototype, "create", null);
+__decorate([
+    (0, common_1.Patch)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateServiceDto]),
+    __metadata("design:returntype", void 0)
+], ServicesController.prototype, "update", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ServicesController.prototype, "remove", null);
 exports.ServicesController = ServicesController = __decorate([
     (0, common_1.Controller)('services'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
