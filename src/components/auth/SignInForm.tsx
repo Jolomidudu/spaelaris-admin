@@ -79,7 +79,7 @@ export default function SignInForm() {
               alt="Spa Elaris"
               width={60}
               height={22}
-              className="h-auto w-32 object-contain"
+              className="h-auto w-16 object-contain"
             />
           </Link>
           <div className="mb-5 sm:mb-8">

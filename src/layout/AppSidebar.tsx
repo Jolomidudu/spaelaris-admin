@@ -87,9 +87,15 @@ const othersItems: NavItem[] = [
 ];
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, setIsMobileOpen } = useSidebar();
   const pathname = usePathname();
   const [role, setRole] = useState("OWNER");
+
+  const closeSidebarOnMobile = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsMobileOpen(false);
+    }
+  };
 
   useEffect(() => {
     setRole(normalizeRole(getStoredAuth()?.user.role) || "OWNER");
@@ -122,6 +128,7 @@ const AppSidebar: React.FC = () => {
         <li key={nav.name}>
           <Link
             href={nav.path}
+            onClick={closeSidebarOnMobile}
             className={`menu-item group ${
               nav.path === pathname ? "menu-item-active" : "menu-item-inactive"
             }`}
@@ -154,7 +161,7 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex ${
+        className={`hidden py-8 lg:flex ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >

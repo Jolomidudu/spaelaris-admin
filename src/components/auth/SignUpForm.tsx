@@ -32,8 +32,30 @@ export default function SignUpForm() {
           </div>
           <div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
-              
-              
+              {/*
+              <div className="sm:col-span-1">
+                <Label>
+                  First Name<span className="text-error-500">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  id="fname"
+                  name="fname"
+                  placeholder="Enter your first name"
+                />
+              </div>
+              <div className="sm:col-span-1">
+                <Label>
+                  Last Name<span className="text-error-500">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  id="lname"
+                  name="lname"
+                  placeholder="Enter your last name"
+                />
+              </div>
+              */}
             </div>
             <div className="relative py-3 sm:py-5">
               <div className="absolute inset-0 flex items-center">
