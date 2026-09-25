@@ -43,6 +43,79 @@ export class ServicesService {
     });
   }
 
+  async update(id: string, data: {
+    name?: string;
+    categoryId?: string;
+    description?: string;
+    durationMinutes?: number;
+    priceNaira?: number;
+  }) {
+    const service = await this.prisma.service.findUnique({
+      where: { id },
+      select: { id: true, name: true, categoryId: true, description: true, durationMinutes: true, priceKobo: true },
+    });
+
+    if (!service) {
+      throw new BadRequestException('Service was not found');
+    }
+
+    if (data.categoryId) {
+      const category = await this.prisma.serviceCategory.findUnique({ where: { id: data.categoryId } });
+      if (!category || !category.isActive) {
+        throw new BadRequestException('Service category was not found');
+      }
+    }
+
+    const nextName = data.name?.trim();
+    if (nextName !== undefined && !nextName) {
+      throw new BadRequestException('Service name is required');
+    }
+
+    if (data.durationMinutes !== undefined && data.durationMinutes < 1) {
+      throw new BadRequestException('Duration must be at least one minute');
+    }
+
+    if (data.priceNaira !== undefined && data.priceNaira < 0) {
+      throw new BadRequestException('Price cannot be negative');
+    }
+
+    return this.prisma.service.update({
+      where: { id },
+      data: {
+        name: nextName,
+        categoryId: data.categoryId,
+        description: data.description === undefined ? undefined : data.description.trim() || null,
+        durationMinutes: data.durationMinutes,
+        priceKobo: data.priceNaira === undefined ? undefined : Math.round(data.priceNaira * 100),
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        durationMinutes: true,
+        priceKobo: true,
+        isActive: true,
+        category: { select: { id: true, name: true, slug: true } },
+      },
+    });
+  }
+
+  async remove(id: string) {
+    const service = await this.prisma.service.findUnique({ where: { id } });
+    if (!service) {
+      throw new BadRequestException('Service was not found');
+    }
+
+    const updated = await this.prisma.service.update({
+      where: { id },
+      data: { isActive: false },
+      select: { id: true, name: true, isActive: true },
+    });
+
+    return { success: true, service: updated };
+  }
+
   async create(data: {
     name: string;
     categoryId: string;

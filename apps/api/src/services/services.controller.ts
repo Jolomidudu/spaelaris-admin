@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { IsInt, IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Permission } from '../auth/permissions';
@@ -38,6 +38,32 @@ class CreateServiceDto {
   priceNaira!: number;
 }
 
+class UpdateServiceDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  durationMinutes?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  priceNaira?: number;
+}
+
 @Controller('services')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions(Permission.ManageServices)
@@ -62,5 +88,15 @@ export class ServicesController {
   @Post()
   create(@Body() body: CreateServiceDto) {
     return this.servicesService.create(body);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() body: UpdateServiceDto) {
+    return this.servicesService.update(id, body);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.servicesService.remove(id);
   }
 }

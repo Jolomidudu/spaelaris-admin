@@ -10,6 +10,16 @@ import React, { useEffect, useState } from "react";
 
 type ServiceCategory = { id: string; name: string };
 
+type ServiceRecord = {
+  id?: string;
+  name: string;
+  category: string;
+  duration: string;
+  price: string;
+  status: string;
+  color: string;
+};
+
 const initialServices = [
   {
     name: "Deep Tissue Massage",
@@ -62,9 +72,11 @@ const initialServices = [
 ];
 
 export default function ServicesPage() {
-  const [services, setServices] = useState(initialServices);
+  const [services, setServices] = useState<ServiceRecord[]>(initialServices);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [createError, setCreateError] = useState("");
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -74,14 +86,12 @@ export default function ServicesPage() {
   const [durationMinutes, setDurationMinutes] = useState("60");
   const [priceNaira, setPriceNaira] = useState("25000");
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/services/categories`, { headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` } })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to load service categories.");
-        setCategories((await response.json()) as ServiceCategory[]);
-      })
-      .catch((error) => setCreateError(error instanceof Error ? error.message : "Unable to load service categories."));
+    void refreshCategories().catch((error) => {
+      setCreateError(error instanceof Error ? error.message : "Unable to load service categories.");
+    });
   }, []);
 
   async function refreshCategories() {
@@ -143,6 +153,16 @@ export default function ServicesPage() {
     }
   }
 
+  const resetServiceForm = () => {
+    setName("");
+    setCategoryId("");
+    setCategoryName("");
+    setCategoryDescription("");
+    setDurationMinutes("60");
+    setPriceNaira("25000");
+    setEditingId(null);
+  };
+
   async function createService(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreateError("");
@@ -160,16 +180,96 @@ export default function ServicesPage() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to create service.");
-      setServices((current) => [{ name: payload.name ?? name, category: payload.category?.name ?? "New treatment", duration: `${durationMinutes} min`, price: `₦${Number(priceNaira).toLocaleString()}`, status: "Active", color: "success" }, ...current]);
-      setName("");
-      setCategoryId("");
-      setCategoryName("");
-      setCategoryDescription("");
+      setServices((current) => [{ id: payload.id, name: payload.name ?? name, category: payload.category?.name ?? "New treatment", duration: `${durationMinutes} min`, price: `₦${Number(priceNaira).toLocaleString()}`, status: "Active", color: "success" }, ...current]);
+      resetServiceForm();
       setIsCreateOpen(false);
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : "Unable to create service.");
     } finally {
       setIsCreating(false);
+    }
+  }
+
+  async function updateService(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingId) return;
+
+    setCreateError("");
+    setIsSaving(true);
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        throw new Error("Your session has expired. Please sign in again.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/services/${editingId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name,
+          categoryId,
+          durationMinutes: Number(durationMinutes),
+          priceNaira: Number(priceNaira),
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to update service.");
+      }
+
+      setServices((current) =>
+        current.map((service) =>
+          service.name === name && service.id === editingId
+            ? {
+                ...service,
+                name: payload.name ?? name,
+                category: payload.category?.name ?? categories.find((item) => item.id === categoryId)?.name ?? service.category,
+                duration: `${payload.durationMinutes ?? Number(durationMinutes)} min`,
+                price: `₦${Number(payload.priceKobo ? payload.priceKobo / 100 : Number(priceNaira)).toLocaleString()}`,
+              }
+            : service,
+        ),
+      );
+
+      resetServiceForm();
+      setIsEditOpen(false);
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "Unable to update service.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDeleteService(serviceId?: string, serviceName?: string) {
+    if (!serviceId || !window.confirm(`Delete ${serviceName ?? "this service"}?`)) {
+      return;
+    }
+
+    const token = getAccessToken();
+    if (!token) {
+      setCreateError("Your session has expired. Please sign in again.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/services/${serviceId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to delete service.");
+      }
+
+      setServices((current) => current.filter((service) => service.id !== serviceId));
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "Unable to delete service.");
     }
   }
 
@@ -230,7 +330,29 @@ export default function ServicesPage() {
                     <Badge variant="light" color={service.color as any}>{service.status}</Badge>
                   </td>
                   <td className="px-4 py-4 text-sm">
-                    <button className="text-brand-500 hover:text-brand-600 dark:text-brand-400">Edit</button>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(service.id ?? null);
+                          setName(service.name);
+                          setCategoryId(categories.find((category) => category.name === service.category)?.id ?? "");
+                          setDurationMinutes(service.duration.replace(/\s*min/i, ""));
+                          setPriceNaira(service.price.replace(/[^\d]/g, ""));
+                          setIsEditOpen(true);
+                        }}
+                        className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteService(service.id, service.name)}
+                        className="text-error-500 hover:text-error-600 dark:text-error-400"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -239,10 +361,10 @@ export default function ServicesPage() {
         </div>
       </ComponentCard>
 
-      {isCreateOpen && (
+      {(isCreateOpen || isEditOpen) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 px-4" role="dialog" aria-modal="true">
-          <form onSubmit={createService} className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">Add service</h2>
+          <form onSubmit={isEditOpen ? updateService : createService} className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">{isEditOpen ? "Edit service" : "Add service"}</h2>
             {createError && <p className="rounded-lg bg-error-50 px-3 py-2 text-sm text-error-600">{createError}</p>}
             <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Service name" className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
             <select required value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="">Select category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
@@ -257,7 +379,7 @@ export default function ServicesPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4"><input required type="number" min="1" value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} placeholder="Duration (minutes)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /><input required type="number" min="0" value={priceNaira} onChange={(event) => setPriceNaira(event.target.value)} placeholder="Price (NGN)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></div>
-            <div className="flex justify-end gap-3"><button type="button" onClick={() => setIsCreateOpen(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-700">Cancel</button><Button size="sm" type="submit" disabled={isCreating}>{isCreating ? "Creating..." : "Create service"}</Button></div>
+            <div className="flex justify-end gap-3"><button type="button" onClick={() => { setIsCreateOpen(false); setIsEditOpen(false); resetServiceForm(); }} className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-700">Cancel</button><Button size="sm" type="submit" disabled={isCreating || isSaving}>{isCreating || isSaving ? (isEditOpen ? "Saving..." : "Creating...") : isEditOpen ? "Save changes" : "Create service"}</Button></div>
           </form>
         </div>
       )}
