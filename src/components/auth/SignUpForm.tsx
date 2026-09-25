@@ -3,6 +3,7 @@ import Checkbox from "@/components/form/input/Checkbox";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
+import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
 
@@ -22,6 +23,15 @@ export default function SignUpForm() {
       </div>
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
+          <Link href="/" className="mb-6 inline-block">
+            <Image
+              src="/images/logo/selogo.png"
+              alt="Spa Elaris"
+              width={60}
+              height={22}
+              className="h-auto w-16 object-contain"
+            />
+          </Link>
           <div className="mb-5 sm:mb-8">
             <h1 className="mb-2 font-semibold text-[#536238]-800 text-title-sm dark:text-white/90 sm:text-title-md">
               Sign Up
