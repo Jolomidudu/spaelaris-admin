@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
+import { getStoredAuth } from "../lib/auth";
 import {
   BoxCubeIcon,
   CalenderIcon,
@@ -35,7 +36,7 @@ const navItems: NavItem[] = [
   {
     icon: <CalenderIcon />,
     name: "Appointments",
-    path: "/calendar",
+    path: "/appointments",
   },
   {
     icon: <UserCircleIcon />,
@@ -55,7 +56,7 @@ const navItems: NavItem[] = [
   {
     name: "Locations",
     icon: <PageIcon />,
-    subItems: [{ name: "Branches & rooms", path: "/blank", pro: false }],
+    subItems: [{ name: "Rooms", path: "/rooms", pro: false }],
   },
 ];
 
@@ -72,7 +73,8 @@ const othersItems: NavItem[] = [
     icon: <BoxCubeIcon />,
     name: "Operations",
     subItems: [
-      { name: "Packages & memberships", path: "/badge", pro: false },
+      { name: "Packages", path: "/packages", pro: false },
+      { name: "Memberships", path: "/memberships", pro: false },
       { name: "Payments", path: "/payments", pro: false },
     ],
   },
@@ -89,6 +91,7 @@ const othersItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
+  const [role, setRole] = useState("OWNER");
   const [manualOpenSubmenu, setManualOpenSubmenu] = useState<{
     type: "main" | "others";
     index: number;
@@ -96,10 +99,33 @@ const AppSidebar: React.FC = () => {
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  useEffect(() => {
+    setRole(getStoredAuth()?.user.role ?? "OWNER");
+  }, []);
+
+  const visibleNavItems = useMemo(() => {
+    if (role === "OWNER") return navItems;
+    if (role === "MANAGER") {
+      return navItems.filter((item) => item.name !== "Staff & Therapists");
+    }
+    if (role === "RECEPTIONIST") {
+      return navItems.filter((item) => ["Dashboard", "Appointments", "Customers"].includes(item.name));
+    }
+    return navItems.filter((item) => ["Dashboard"].includes(item.name));
+  }, [role]);
+
+  const visibleOtherItems = useMemo(() => {
+    if (role === "OWNER" || role === "MANAGER") return othersItems;
+    if (role === "RECEPTIONIST") {
+      return othersItems.filter((item) => item.name === "Operations" || item.name === "Account");
+    }
+    return othersItems.filter((item) => item.name === "Account");
+  }, [role]);
+
   const getMatchingSubmenu = useCallback(() => {
     const menus: Array<{ type: "main" | "others"; items: NavItem[] }> = [
-      { type: "main", items: navItems },
-      { type: "others", items: othersItems },
+      { type: "main", items: visibleNavItems },
+      { type: "others", items: visibleOtherItems },
     ];
 
     for (const menu of menus) {
@@ -114,7 +140,7 @@ const AppSidebar: React.FC = () => {
     }
 
     return null;
-  }, [pathname]);
+  }, [pathname, visibleNavItems, visibleOtherItems]);
 
   const openSubmenu = useMemo(() => {
     const matched = getMatchingSubmenu();
@@ -350,7 +376,7 @@ const AppSidebar: React.FC = () => {
               >
                 {isExpanded || isHovered || isMobileOpen ? "Menu" : <HorizontaLDots />}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(visibleNavItems, "main")}
             </div>
 
             <div>
@@ -363,7 +389,7 @@ const AppSidebar: React.FC = () => {
               >
                 {isExpanded || isHovered || isMobileOpen ? "Others" : <HorizontaLDots />}
               </h2>
-              {renderMenuItems(othersItems, "others")}
+              {renderMenuItems(visibleOtherItems, "others")}
             </div>
           </div>
         </nav>

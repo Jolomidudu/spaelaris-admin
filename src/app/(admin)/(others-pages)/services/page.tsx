@@ -1,16 +1,14 @@
+"use client";
+
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
-import type { Metadata } from "next";
-import React from "react";
+import { API_BASE_URL } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
+import React, { useState } from "react";
 
-export const metadata: Metadata = {
-  title: "Spaelaris service catalog",
-  description: "Manage spa treatments, durations, pricing, and availability",
-};
-
-const services = [
+const initialServices = [
   {
     name: "Deep Tissue Massage",
     category: "Massage therapy",
@@ -62,6 +60,38 @@ const services = [
 ];
 
 export default function ServicesPage() {
+  const [services, setServices] = useState(initialServices);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [name, setName] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState("60");
+  const [priceNaira, setPriceNaira] = useState("25000");
+
+  async function createService(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCreateError("");
+    setIsCreating(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/services`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAccessToken() ?? ""}` },
+        body: JSON.stringify({ name, categoryId, durationMinutes: Number(durationMinutes), priceNaira: Number(priceNaira) }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to create service.");
+      setServices((current) => [{ name: payload.name ?? name, category: "New treatment", duration: `${durationMinutes} min`, price: `₦${Number(priceNaira).toLocaleString()}`, status: "Active", color: "success" }, ...current]);
+      setName("");
+      setCategoryId("");
+      setIsCreateOpen(false);
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "Unable to create service.");
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageBreadcrumb pageTitle="Services" />
@@ -93,7 +123,7 @@ export default function ServicesPage() {
               className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 sm:w-72"
             />
           </div>
-          <Button size="sm">Add service</Button>
+          <Button size="sm" onClick={() => { setCreateError(""); setIsCreateOpen(true); }}>Add service</Button>
         </div>
 
         <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
@@ -127,6 +157,19 @@ export default function ServicesPage() {
           </table>
         </div>
       </ComponentCard>
+
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 px-4" role="dialog" aria-modal="true">
+          <form onSubmit={createService} className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">Add service</h2>
+            {createError && <p className="rounded-lg bg-error-50 px-3 py-2 text-sm text-error-600">{createError}</p>}
+            <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Service name" className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+            <input required value={categoryId} onChange={(event) => setCategoryId(event.target.value)} placeholder="Category ID" className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+            <div className="grid grid-cols-2 gap-4"><input required type="number" min="1" value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} placeholder="Duration (minutes)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /><input required type="number" min="0" value={priceNaira} onChange={(event) => setPriceNaira(event.target.value)} placeholder="Price (NGN)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></div>
+            <div className="flex justify-end gap-3"><button type="button" onClick={() => setIsCreateOpen(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-700">Cancel</button><Button size="sm" type="submit" disabled={isCreating}>{isCreating ? "Creating..." : "Create service"}</Button></div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
