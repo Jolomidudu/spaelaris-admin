@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
-import { getStoredAuth } from "../lib/auth";
+import { getStoredAuth, normalizeRole } from "../lib/auth";
 import {
   BoxCubeIcon,
   CalenderIcon,
@@ -84,11 +84,6 @@ const othersItems: NavItem[] = [
     name: "My profile",
     path: "/profile",
   },
-  // {
-  //   icon: <PlugInIcon />,
-  //   name: "Sign out",
-  //   path: "/signin",
-  // },
 ];
 
 const AppSidebar: React.FC = () => {
@@ -97,27 +92,29 @@ const AppSidebar: React.FC = () => {
   const [role, setRole] = useState("OWNER");
 
   useEffect(() => {
-    setRole(getStoredAuth()?.user.role ?? "OWNER");
+    setRole(normalizeRole(getStoredAuth()?.user.role) || "OWNER");
   }, []);
 
+  const normalizedRole = normalizeRole(role);
+
   const visibleNavItems = useMemo(() => {
-    if (role === "OWNER") return navItems;
-    if (role === "MANAGER") {
+    if (normalizedRole === "OWNER") return navItems;
+    if (normalizedRole === "MANAGER") {
       return navItems.filter((item) => item.name !== "Staff & Therapists");
     }
-    if (role === "RECEPTIONIST") {
+    if (normalizedRole === "RECEPTIONIST") {
       return navItems.filter((item) => ["Dashboard", "Appointments", "Customers"].includes(item.name));
     }
     return navItems.filter((item) => ["Dashboard"].includes(item.name));
-  }, [role]);
+  }, [normalizedRole]);
 
   const visibleOtherItems = useMemo(() => {
-    if (role === "OWNER" || role === "MANAGER") return othersItems;
-    if (role === "RECEPTIONIST") {
-      return othersItems.filter((item) => ["Memberships", "Payments", "My profile", "Sign out"].includes(item.name));
+    if (normalizedRole === "OWNER" || normalizedRole === "MANAGER") return othersItems;
+    if (normalizedRole === "RECEPTIONIST") {
+      return othersItems.filter((item) => ["Memberships", "Payments", "My profile"].includes(item.name));
     }
-    return othersItems.filter((item) => ["My profile", "Sign out"].includes(item.name));
-  }, [role]);
+    return othersItems.filter((item) => ["My profile"].includes(item.name));
+  }, [normalizedRole]);
 
   const renderMenuItems = (items: NavItem[]) => (
     <ul className="flex flex-col gap-2">

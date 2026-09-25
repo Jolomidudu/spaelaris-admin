@@ -85,9 +85,9 @@ export default function SpaDashboard() {
           </div>
           <div className="mt-5 grid gap-3">
             {[
-              ["Register customer", "Add a new customer to the directory", "/basic-tables"],
+              ["Register customer", "Add a new customer to the directory", "/customers"],
               ["Manage availability", "Update therapist shifts and time off", "/calendar"],
-              ["Review payments", "Reconcile today’s outstanding balances", "/basic-tables"],
+              ["Review payments", "Reconcile today’s outstanding balances", "/payments"],
             ].map(([title, detail, href]) => (
               <a key={title} href={href} className="rounded-xl border border-gray-100 p-4 transition hover:border-brand-200 hover:bg-brand-50/50 dark:border-gray-800 dark:hover:border-brand-500/40 dark:hover:bg-brand-500/5">
                 <p className="text-sm font-medium text-gray-800 dark:text-white/90">{title}</p>

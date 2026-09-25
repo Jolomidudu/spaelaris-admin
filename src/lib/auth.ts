@@ -49,3 +49,18 @@ export function clearAuthSession() {
 export function getAccessToken() {
   return getStoredAuth()?.accessToken ?? null;
 }
+
+export function normalizeRole(role?: string | null): string {
+  return String(role ?? '').trim().toUpperCase();
+}
+
+export function isRoleAllowed(
+  role: string | null | undefined,
+  allowedRoles: string[],
+): boolean {
+  const normalizedRole = normalizeRole(role);
+
+  return allowedRoles.some(
+    (allowedRole) => normalizeRole(allowedRole) === normalizedRole,
+  );
+}

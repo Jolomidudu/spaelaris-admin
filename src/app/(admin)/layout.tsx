@@ -1,7 +1,7 @@
 "use client";
 
 import { useSidebar } from "@/context/SidebarContext";
-import { getStoredAuth } from "@/lib/auth";
+import { getStoredAuth, isRoleAllowed, normalizeRole } from "@/lib/auth";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
@@ -17,6 +17,7 @@ const routeRoles: Record<string, string[]> = {
   "/packages": ["OWNER", "MANAGER"],
   "/memberships": ["OWNER", "MANAGER", "RECEPTIONIST"],
   "/payments": ["OWNER", "MANAGER", "RECEPTIONIST"],
+  "/profile": ["OWNER", "MANAGER", "RECEPTIONIST", "THERAPIST"],
   "/staff": ["OWNER"],
   "/line-chart": ["OWNER", "MANAGER"],
   "/bar-chart": ["OWNER", "MANAGER"],
@@ -39,7 +40,7 @@ export default function AdminLayout({
     }
 
     const allowedRoles = routeRoles[pathname];
-    if (allowedRoles && !allowedRoles.includes(session.user.role)) {
+    if (allowedRoles && !isRoleAllowed(session.user.role, allowedRoles)) {
       router.replace("/");
     }
   }, [pathname, router]);
