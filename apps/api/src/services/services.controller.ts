@@ -6,6 +6,16 @@ import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { ServicesService } from './services.service';
 
+class CreateServiceCategoryDto {
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
 class CreateServiceDto {
   @IsString()
   @MinLength(1)
@@ -42,6 +52,11 @@ export class ServicesController {
   @Get('categories')
   categories() {
     return this.servicesService.categories();
+  }
+
+  @Post('categories')
+  createCategory(@Body() body: CreateServiceCategoryDto) {
+    return this.servicesService.createCategory(body);
   }
 
   @Post()

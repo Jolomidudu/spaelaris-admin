@@ -22,6 +22,27 @@ export class ServicesService {
     });
   }
 
+  async createCategory(data: { name: string; description?: string }) {
+    const name = data.name.trim();
+    if (!name) throw new BadRequestException('Category name is required');
+
+    const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`;
+
+    const existing = await this.prisma.serviceCategory.findUnique({ where: { slug } });
+    if (existing) {
+      throw new BadRequestException('A category with this name already exists');
+    }
+
+    return this.prisma.serviceCategory.create({
+      data: {
+        name,
+        slug,
+        description: data.description?.trim() || undefined,
+      },
+      select: { id: true, name: true, slug: true, description: true },
+    });
+  }
+
   async create(data: {
     name: string;
     categoryId: string;

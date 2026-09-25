@@ -68,6 +68,9 @@ export default function ServicesPage() {
   const [createError, setCreateError] = useState("");
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [categoryName, setCategoryName] = useState("");
+  const [categoryDescription, setCategoryDescription] = useState("");
+  const [isCategoryCreating, setIsCategoryCreating] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState("60");
   const [priceNaira, setPriceNaira] = useState("25000");
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
@@ -81,21 +84,87 @@ export default function ServicesPage() {
       .catch((error) => setCreateError(error instanceof Error ? error.message : "Unable to load service categories."));
   }, []);
 
+  async function refreshCategories() {
+    const response = await fetch(`${API_BASE_URL}/api/services/categories`, {
+      headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
+    });
+
+    if (!response.ok) throw new Error("Unable to refresh categories.");
+
+    const nextCategories = (await response.json()) as ServiceCategory[];
+    setCategories(nextCategories);
+    return nextCategories;
+  }
+
+  async function createServiceCategory() {
+    const trimmed = categoryName.trim();
+    if (!trimmed) {
+      setCreateError("Category name is required.");
+      return;
+    }
+
+    setCreateError("");
+    setIsCategoryCreating(true);
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        throw new Error("Your session has expired. Please sign in again.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/services/categories`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: trimmed,
+          description: categoryDescription.trim() || undefined,
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to create category.");
+      }
+
+      const nextCategories = await refreshCategories();
+      const createdCategory = nextCategories.find((category) => category.name.toLowerCase() === trimmed.toLowerCase());
+      if (createdCategory) {
+        setCategoryId(createdCategory.id);
+      }
+      setCategoryName("");
+      setCategoryDescription("");
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "Unable to create category.");
+    } finally {
+      setIsCategoryCreating(false);
+    }
+  }
+
   async function createService(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreateError("");
     setIsCreating(true);
     try {
+      const token = getAccessToken();
+      if (!token) {
+        throw new Error("Your session has expired. Please sign in again.");
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/services`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAccessToken() ?? ""}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name, categoryId, durationMinutes: Number(durationMinutes), priceNaira: Number(priceNaira) }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to create service.");
-      setServices((current) => [{ name: payload.name ?? name, category: "New treatment", duration: `${durationMinutes} min`, price: `₦${Number(priceNaira).toLocaleString()}`, status: "Active", color: "success" }, ...current]);
+      setServices((current) => [{ name: payload.name ?? name, category: payload.category?.name ?? "New treatment", duration: `${durationMinutes} min`, price: `₦${Number(priceNaira).toLocaleString()}`, status: "Active", color: "success" }, ...current]);
       setName("");
       setCategoryId("");
+      setCategoryName("");
+      setCategoryDescription("");
       setIsCreateOpen(false);
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : "Unable to create service.");
@@ -138,8 +207,8 @@ export default function ServicesPage() {
           <Button size="sm" onClick={() => { setCreateError(""); setIsCreateOpen(true); }}>Add service</Button>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+          <table className="min-w-[720px] w-full divide-y divide-gray-200 dark:divide-gray-800">
             <thead className="bg-gray-50 dark:bg-white/[0.02]">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Service</th>
@@ -177,6 +246,16 @@ export default function ServicesPage() {
             {createError && <p className="rounded-lg bg-error-50 px-3 py-2 text-sm text-error-600">{createError}</p>}
             <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Service name" className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
             <select required value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="">Select category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
+
+            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Need a new category?</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
+                <input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} placeholder="New category name" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                <button type="button" onClick={createServiceCategory} disabled={isCategoryCreating} className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70">{isCategoryCreating ? "Saving..." : "Add category"}</button>
+              </div>
+              <input value={categoryDescription} onChange={(event) => setCategoryDescription(event.target.value)} placeholder="Category description (optional)" className="mt-3 h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+            </div>
+
             <div className="grid grid-cols-2 gap-4"><input required type="number" min="1" value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} placeholder="Duration (minutes)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /><input required type="number" min="0" value={priceNaira} onChange={(event) => setPriceNaira(event.target.value)} placeholder="Price (NGN)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></div>
             <div className="flex justify-end gap-3"><button type="button" onClick={() => setIsCreateOpen(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-700">Cancel</button><Button size="sm" type="submit" disabled={isCreating}>{isCreating ? "Creating..." : "Create service"}</Button></div>
           </form>
