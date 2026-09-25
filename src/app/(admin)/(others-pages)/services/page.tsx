@@ -11,68 +11,45 @@ import React, { useEffect, useState } from "react";
 type ServiceCategory = { id: string; name: string };
 
 type ServiceRecord = {
-  id?: string;
+  id: string;
   name: string;
   category: string;
   duration: string;
+  durationMinutes: number | null;
   price: string;
+  priceNaira: number;
   status: string;
   color: string;
 };
 
-const initialServices = [
-  {
-    name: "Deep Tissue Massage",
-    category: "Massage therapy",
-    duration: "60 min",
-    price: "₦32,000",
-    status: "Active",
-    color: "success",
-  },
-  {
-    name: "Glow Facial",
-    category: "Facials",
-    duration: "45 min",
-    price: "₦24,500",
-    status: "Active",
-    color: "primary",
-  },
-  {
-    name: "Aromatherapy Session",
-    category: "Wellness",
-    duration: "50 min",
-    price: "₦28,000",
-    status: "Active",
-    color: "success",
-  },
-  {
-    name: "Couples Retreat",
-    category: "Packages",
-    duration: "90 min",
-    price: "₦58,000",
-    status: "Booked out",
-    color: "warning",
-  },
-  {
-    name: "Detox Body Scrub",
-    category: "Body ritual",
-    duration: "55 min",
-    price: "₦30,000",
-    status: "Active",
-    color: "success",
-  },
-  {
-    name: "Luxury Manicure",
-    category: "Beauty",
-    duration: "30 min",
-    price: "₦18,000",
-    status: "Paused",
-    color: "error",
-  },
-];
+type ApiService = {
+  id: string;
+  name: string;
+  durationMinutes: number | null;
+  priceKobo: number;
+  isActive: boolean;
+  category: { id: string; name: string };
+};
+
+function toServiceRecord(service: ApiService): ServiceRecord {
+  const priceNaira = service.priceKobo / 100;
+  return {
+    id: service.id,
+    name: service.name,
+    category: service.category.name,
+    duration: service.durationMinutes === null ? "Not set" : `${service.durationMinutes} min`,
+    durationMinutes: service.durationMinutes,
+    price: `₦${priceNaira.toLocaleString("en-NG")}`,
+    priceNaira,
+    status: service.isActive ? "Active" : "Inactive",
+    color: service.isActive ? "success" : "error",
+  };
+}
 
 export default function ServicesPage() {
-  const [services, setServices] = useState<ServiceRecord[]>(initialServices);
+  const [services, setServices] = useState<ServiceRecord[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [pageError, setPageError] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -87,12 +64,36 @@ export default function ServicesPage() {
   const [priceNaira, setPriceNaira] = useState("25000");
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const servicesWithDuration = services.filter((service) => service.durationMinutes !== null);
+  const averageDuration = servicesWithDuration.length
+    ? Math.round(servicesWithDuration.reduce((total, service) => total + (service.durationMinutes ?? 0), 0) / servicesWithDuration.length)
+    : 0;
+  const averagePrice = services.length
+    ? Math.round(services.reduce((total, service) => total + service.priceNaira, 0) / services.length)
+    : 0;
 
   useEffect(() => {
-    void refreshCategories().catch((error) => {
-      setCreateError(error instanceof Error ? error.message : "Unable to load service categories.");
+    void Promise.all([refreshCategories(), refreshServices()]).catch((error) => {
+      setPageError(error instanceof Error ? error.message : "Unable to load service catalog.");
     });
   }, []);
+
+  async function refreshServices() {
+    setIsLoadingServices(true);
+    setPageError("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/services`, {
+        headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
+      });
+      if (!response.ok) throw new Error("Unable to load services. Please sign in again if your session has expired.");
+      const nextServices = (await response.json()) as ApiService[];
+      setServices(nextServices.map(toServiceRecord));
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : "Unable to load services.");
+    } finally {
+      setIsLoadingServices(false);
+    }
+  }
 
   async function refreshCategories() {
     const response = await fetch(`${API_BASE_URL}/api/services/categories`, {
@@ -180,7 +181,7 @@ export default function ServicesPage() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to create service.");
-      setServices((current) => [{ id: payload.id, name: payload.name ?? name, category: payload.category?.name ?? "New treatment", duration: `${durationMinutes} min`, price: `₦${Number(priceNaira).toLocaleString()}`, status: "Active", color: "success" }, ...current]);
+      await refreshServices();
       resetServiceForm();
       setIsCreateOpen(false);
     } catch (error) {
@@ -212,7 +213,7 @@ export default function ServicesPage() {
         body: JSON.stringify({
           name,
           categoryId,
-          durationMinutes: Number(durationMinutes),
+          ...(durationMinutes.trim() ? { durationMinutes: Number(durationMinutes) } : {}),
           priceNaira: Number(priceNaira),
         }),
       });
@@ -222,19 +223,7 @@ export default function ServicesPage() {
         throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to update service.");
       }
 
-      setServices((current) =>
-        current.map((service) =>
-          service.name === name && service.id === editingId
-            ? {
-                ...service,
-                name: payload.name ?? name,
-                category: payload.category?.name ?? categories.find((item) => item.id === categoryId)?.name ?? service.category,
-                duration: `${payload.durationMinutes ?? Number(durationMinutes)} min`,
-                price: `₦${Number(payload.priceKobo ? payload.priceKobo / 100 : Number(priceNaira)).toLocaleString()}`,
-              }
-            : service,
-        ),
-      );
+      await refreshServices();
 
       resetServiceForm();
       setIsEditOpen(false);
@@ -267,7 +256,7 @@ export default function ServicesPage() {
         throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to delete service.");
       }
 
-      setServices((current) => current.filter((service) => service.id !== serviceId));
+      await refreshServices();
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : "Unable to delete service.");
     }
@@ -280,15 +269,15 @@ export default function ServicesPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
           <p className="text-sm text-gray-500 dark:text-gray-400">Active treatments</p>
-          <p className="mt-3 text-2xl font-semibold text-gray-900 dark:text-white">42</p>
+          <p className="mt-3 text-2xl font-semibold text-gray-900 dark:text-white">{services.length}</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
           <p className="text-sm text-gray-500 dark:text-gray-400">Avg. duration</p>
-          <p className="mt-3 text-2xl font-semibold text-gray-900 dark:text-white">54 min</p>
+          <p className="mt-3 text-2xl font-semibold text-gray-900 dark:text-white">{averageDuration ? `${averageDuration} min` : "-"}</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
           <p className="text-sm text-gray-500 dark:text-gray-400">Revenue per slot</p>
-          <p className="mt-3 text-2xl font-semibold text-gray-900 dark:text-white">₦28,700</p>
+          <p className="mt-3 text-2xl font-semibold text-gray-900 dark:text-white">{averagePrice ? `₦${averagePrice.toLocaleString("en-NG")}` : "-"}</p>
         </div>
       </div>
 
@@ -296,6 +285,7 @@ export default function ServicesPage() {
         title="Service catalog"
         desc="Current offerings, pricing, and treatment availability."
       >
+        {pageError && <p role="alert" className="mb-4 rounded-lg bg-error-50 px-3 py-2 text-sm text-error-600">{pageError}</p>}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <input
@@ -320,8 +310,12 @@ export default function ServicesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-800 dark:bg-gray-900">
-              {services.map((service) => (
-                <tr key={service.name} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+              {isLoadingServices ? (
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">Loading services...</td></tr>
+              ) : services.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">{pageError ? "Services could not be loaded." : "No active services found."}</td></tr>
+              ) : services.map((service) => (
+                <tr key={service.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
                   <td className="px-4 py-4 text-sm font-medium text-gray-800 dark:text-white/90">{service.name}</td>
                   <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{service.category}</td>
                   <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{service.duration}</td>
@@ -337,8 +331,8 @@ export default function ServicesPage() {
                           setEditingId(service.id ?? null);
                           setName(service.name);
                           setCategoryId(categories.find((category) => category.name === service.category)?.id ?? "");
-                          setDurationMinutes(service.duration.replace(/\s*min/i, ""));
-                          setPriceNaira(service.price.replace(/[^\d]/g, ""));
+                          setDurationMinutes(service.durationMinutes === null ? "" : String(service.durationMinutes));
+                          setPriceNaira(String(service.priceNaira));
                           setIsEditOpen(true);
                         }}
                         className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
@@ -378,7 +372,7 @@ export default function ServicesPage() {
               <input value={categoryDescription} onChange={(event) => setCategoryDescription(event.target.value)} placeholder="Category description (optional)" className="mt-3 h-11 w-full rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4"><input required type="number" min="1" value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} placeholder="Duration (minutes)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /><input required type="number" min="0" value={priceNaira} onChange={(event) => setPriceNaira(event.target.value)} placeholder="Price (NGN)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></div>
+            <div className="grid grid-cols-2 gap-4"><input required={!isEditOpen} type="number" min="1" value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} placeholder="Duration (minutes)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /><input required type="number" min="0" value={priceNaira} onChange={(event) => setPriceNaira(event.target.value)} placeholder="Price (NGN)" className="h-11 rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></div>
             <div className="flex justify-end gap-3"><button type="button" onClick={() => { setIsCreateOpen(false); setIsEditOpen(false); resetServiceForm(); }} className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-700">Cancel</button><Button size="sm" type="submit" disabled={isCreating || isSaving}>{isCreating || isSaving ? (isEditOpen ? "Saving..." : "Creating...") : isEditOpen ? "Save changes" : "Create service"}</Button></div>
           </form>
         </div>

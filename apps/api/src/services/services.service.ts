@@ -7,7 +7,7 @@ export class ServicesService {
 
   list() {
     return this.prisma.service.findMany({
-      where: { isActive: true },
+      where: { isActive: true, category: { isActive: true } },
       orderBy: [{ category: { sortOrder: 'asc' } }, { name: 'asc' }],
       select: {
         id: true,
