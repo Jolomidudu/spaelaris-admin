@@ -67,7 +67,7 @@ export default function SignUpForm() {
               <div className="space-y-5">
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   {/* <!-- First Name --> */}
-                  <div className="sm:col-span-1">
+                  {/* <div className="sm:col-span-1">
                     <Label>
                       First Name<span className="text-error-500">*</span>
                     </Label>
@@ -77,9 +77,9 @@ export default function SignUpForm() {
                       name="fname"
                       placeholder="Enter your first name"
                     />
-                  </div>
+                  </div> */}
                   {/* <!-- Last Name --> */}
-                  <div className="sm:col-span-1">
+                  {/* <div className="sm:col-span-1">
                     <Label>
                       Last Name<span className="text-error-500">*</span>
                     </Label>
@@ -89,7 +89,7 @@ export default function SignUpForm() {
                       name="lname"
                       placeholder="Enter your last name"
                     />
-                  </div>
+                  </div> */}
                 </div>
                 {/* <!-- Email --> */}
                 <div>
