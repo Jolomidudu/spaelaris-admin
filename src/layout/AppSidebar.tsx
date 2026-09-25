@@ -114,9 +114,9 @@ const AppSidebar: React.FC = () => {
   const visibleOtherItems = useMemo(() => {
     if (role === "OWNER" || role === "MANAGER") return othersItems;
     if (role === "RECEPTIONIST") {
-      return othersItems.filter((item) => item.name === "Operations" || item.name === "Account");
+      return othersItems.filter((item) => ["Memberships", "Payments", "My profile", "Sign out"].includes(item.name));
     }
-    return othersItems.filter((item) => item.name === "Account");
+    return othersItems.filter((item) => ["My profile", "Sign out"].includes(item.name));
   }, [role]);
 
   const renderMenuItems = (items: NavItem[]) => (
