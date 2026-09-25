@@ -1,14 +1,9 @@
 "use client";
 
-import type { Metadata } from "next";
 import { getStoredAuth } from "@/lib/auth";
 import { useEffect, useState } from "react";
 import React from "react";
 
-export const metadata: Metadata = {
-  title: "Spaelaris Operations",
-  description: "Spa Elaris Admin Dashboard",
-};
 
 const metrics = [
   { label: "Today’s appointments", value: "28", detail: "6 currently in progress", tone: "text-brand-500" },
