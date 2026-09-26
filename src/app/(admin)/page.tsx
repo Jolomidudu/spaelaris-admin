@@ -69,12 +69,12 @@ export default function SpaDashboard() {
         {!isTherapist && <a href="/appointments" className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-600">New appointment</a>}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {(isTherapist ? allMetrics.slice(0, 2) : isReceptionist ? allMetrics.filter((metric) => metric.label !== "Available therapists") : allMetrics).map((metric) => (
-          <div key={metric.label} className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-            <p className="text-sm text-gray-500 dark:text-gray-400">{metric.label}</p>
-            <p className={`mt-3 text-2xl font-semibold ${metric.tone}`}>{metric.value}</p>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{metric.detail}</p>
+          <div key={metric.label} className="min-w-0 rounded-2xl border border-gray-200 bg-white p-3 sm:p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+            <p className="text-xs text-gray-500 sm:text-sm dark:text-gray-400">{metric.label}</p>
+            <p className={`mt-3 break-words text-xl font-semibold sm:text-2xl ${metric.tone}`}>{metric.value}</p>
+            <p className="mt-2 text-[11px] leading-4 text-gray-500 sm:text-xs dark:text-gray-400">{metric.detail}</p>
           </div>
         ))}
       </div>
