@@ -6,5 +6,10 @@ export declare class DashboardService {
         staff: number;
         services: number;
         categories: number;
+        appointmentsToday: number;
+        revenueTodayKobo: number;
+        availableTherapists: number;
+        pendingPaymentsKobo: number;
+        pendingPaymentCount: number;
     }>;
 }

@@ -6,18 +6,24 @@ import { useEffect, useState } from "react";
 import React from "react";
 
 
-const metrics = [
-  { label: "Today’s appointments", value: "28", detail: "6 currently in progress", tone: "text-brand-500" },
-  { label: "Today’s revenue", value: "₦486,500", detail: "+12.4% from last Tuesday", tone: "text-success-500" },
-  { label: "Available therapists", value: "12 / 16", detail: "4 on leave or off shift", tone: "text-warning-500" },
-  { label: "Pending payments", value: "₦92,000", detail: "8 appointments to reconcile", tone: "text-error-500" },
-];
-
 type DashboardSummary = {
   staff: number;
   services: number;
   categories: number;
+  appointmentsToday: number;
+  revenueTodayKobo: number;
+  availableTherapists: number;
+  pendingPaymentsKobo: number;
+  pendingPaymentCount: number;
 };
+
+function formatNaira(amountKobo: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(amountKobo / 100);
+}
 
 const appointments = [
   ["09:00", "Amaka Okafor", "Deep tissue massage", "Adaeze", "Checked in"],
@@ -50,6 +56,12 @@ export default function SpaDashboard() {
   const isTherapist = role === "THERAPIST";
   const isReceptionist = role === "RECEPTIONIST";
   const greeting = isTherapist ? "Your treatment day" : isReceptionist ? "Front desk overview" : "Spaelaris operations";
+  const metrics = [
+    { label: "Today’s appointments", value: summary ? String(summary.appointmentsToday) : "-", detail: "Scheduled today, excluding cancelled and no-show", tone: "text-brand-500" },
+    { label: "Today’s revenue", value: summary ? formatNaira(summary.revenueTodayKobo) : "-", detail: "Payments received today", tone: "text-success-500" },
+    { label: "Available therapists", value: summary ? String(summary.availableTherapists) : "-", detail: "Bookable, not in treatment or time off", tone: "text-warning-500" },
+    { label: "Pending payments", value: summary ? formatNaira(summary.pendingPaymentsKobo) : "-", detail: summary ? `${summary.pendingPaymentCount} pending payment${summary.pendingPaymentCount === 1 ? "" : "s"}` : "Outstanding payments", tone: "text-error-500" },
+  ];
   const inventoryMetrics = [
     { label: "Active staff", value: summary ? String(summary.staff) : "-", detail: "Active staff accounts", tone: "text-brand-500" },
     { label: "Active services", value: summary ? String(summary.services) : "-", detail: "Listed in the service catalog", tone: "text-success-500" },
