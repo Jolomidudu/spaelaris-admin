@@ -52,6 +52,16 @@ function getStatusClasses(status: string) {
   return "bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300";
 }
 
+function formatAvailability(periods: AvailabilityPeriod[]) {
+  return weekdays.flatMap((day, dayOfWeek) => {
+    const dayPeriods = periods
+      .filter((period) => period.dayOfWeek === dayOfWeek)
+      .sort((first, second) => first.startTime.localeCompare(second.startTime));
+    if (dayPeriods.length === 0) return [];
+    return [`${day.slice(0, 3)} ${dayPeriods.map(({ startTime, endTime }) => `${startTime}-${endTime}`).join(", ")}`];
+  });
+}
+
 export default function StaffDirectoryPage() {
   const [staffData, setStaffData] = useState<StaffMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -198,7 +208,9 @@ export default function StaffDirectoryPage() {
     }
   }
 
-  const bookableCount = staffData.filter((staff) => staff.isBookable).length;
+  const therapists = staffData.filter((staff) => staff.user.role === "THERAPIST");
+  const bookableCount = therapists.filter((staff) => staff.isBookable).length;
+  const unscheduledCount = therapists.filter((staff) => staff.availability.length === 0).length;
 
   return (
     <div className="space-y-6">
@@ -214,8 +226,8 @@ export default function StaffDirectoryPage() {
           <p className="mt-3 text-2xl font-semibold text-gray-900 dark:text-white">{bookableCount}</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Appointments today</p>
-          <p className="mt-3 text-2xl font-semibold text-gray-900 dark:text-white">-</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Therapists without hours</p>
+          <p className="mt-3 text-2xl font-semibold text-gray-900 dark:text-white">{unscheduledCount}</p>
         </div>
       </div>
 
@@ -241,7 +253,7 @@ export default function StaffDirectoryPage() {
                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Services</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Contact</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Schedule</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Weekly hours</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-800 dark:bg-gray-900">
@@ -265,7 +277,12 @@ export default function StaffDirectoryPage() {
                     </span>
                   </td>
                   <td className="px-5 py-4 text-sm">
-                    {staff.user.role === "THERAPIST" && <button type="button" onClick={() => openAvailabilityEditor(staff)} className="font-medium text-brand-500 hover:text-brand-600">Availability</button>}
+                    {staff.user.role === "THERAPIST" && <div className="flex min-w-44 items-start justify-between gap-3">
+                      {staff.availability.length > 0
+                        ? <span className="space-y-1 text-xs text-gray-600 dark:text-gray-300">{formatAvailability(staff.availability).map((period) => <span key={period} className="block">{period}</span>)}</span>
+                        : <span className="text-xs text-warning-600 dark:text-warning-500">No hours set</span>}
+                      <button type="button" onClick={() => openAvailabilityEditor(staff)} className="shrink-0 font-medium text-brand-500 hover:text-brand-600">Edit</button>
+                    </div>}
                   </td>
                 </tr>
                 );

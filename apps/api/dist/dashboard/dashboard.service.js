@@ -47,7 +47,7 @@ let DashboardService = class DashboardService {
     async summary() {
         const now = new Date();
         const { start: todayStart, end: todayEnd } = getLocalDayRange('Africa/Lagos', now);
-        const [staff, services, categories, appointmentsToday, revenueToday, availableTherapists, pendingPayments] = await Promise.all([
+        const [staff, services, categories, appointmentsToday, todaySchedule, revenueToday, availableTherapists, pendingPayments] = await Promise.all([
             this.prisma.user.count({
                 where: {
                     status: client_1.UserStatus.ACTIVE,
@@ -62,6 +62,23 @@ let DashboardService = class DashboardService {
                 where: {
                     startsAt: { gte: todayStart, lt: todayEnd },
                     status: { notIn: [client_1.AppointmentStatus.CANCELLED, client_1.AppointmentStatus.NO_SHOW] },
+                },
+            }),
+            this.prisma.appointment.findMany({
+                where: {
+                    startsAt: { gte: todayStart, lt: todayEnd },
+                    status: { notIn: [client_1.AppointmentStatus.CANCELLED, client_1.AppointmentStatus.NO_SHOW] },
+                },
+                orderBy: { startsAt: 'asc' },
+                take: 6,
+                select: {
+                    id: true,
+                    startsAt: true,
+                    status: true,
+                    customer: { select: { firstName: true, lastName: true } },
+                    therapist: { select: { firstName: true, lastName: true } },
+                    location: { select: { name: true, city: true } },
+                    services: { select: { name: true } },
                 },
             }),
             this.prisma.payment.aggregate({
@@ -97,6 +114,7 @@ let DashboardService = class DashboardService {
             services,
             categories,
             appointmentsToday,
+            todaySchedule,
             revenueTodayKobo: revenueToday._sum.amountKobo ?? 0,
             availableTherapists,
             pendingPaymentsKobo: pendingPayments._sum.amountKobo ?? 0,

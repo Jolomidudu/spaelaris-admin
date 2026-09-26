@@ -15,6 +15,15 @@ type DashboardSummary = {
   availableTherapists: number;
   pendingPaymentsKobo: number;
   pendingPaymentCount: number;
+  todaySchedule: {
+    id: string;
+    startsAt: string;
+    status: string;
+    customer: { firstName: string; lastName: string };
+    therapist: { firstName: string; lastName: string } | null;
+    location: { name: string; city: string };
+    services: { name: string }[];
+  }[];
 };
 
 function formatNaira(amountKobo: number) {
@@ -24,13 +33,6 @@ function formatNaira(amountKobo: number) {
     maximumFractionDigits: 0,
   }).format(amountKobo / 100);
 }
-
-const appointments = [
-  ["09:00", "Amaka Okafor", "Deep tissue massage", "Adaeze", "Checked in"],
-  ["10:30", "Tolu Williams", "Glow facial", "Nneka", "Confirmed"],
-  ["12:00", "Chiamaka Eze", "Aromatherapy", "Olamide", "Confirmed"],
-  ["14:30", "David Cole", "Couples retreat", "Adaeze", "Pending"],
-];
 
 export default function SpaDashboard() {
   const [role, setRole] = useState("OWNER");
@@ -98,20 +100,24 @@ export default function SpaDashboard() {
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
             <div>
               <h2 className="font-semibold text-gray-800 dark:text-white/90">Today’s schedule</h2>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Lagos · 28 appointments</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{summary ? `${summary.appointmentsToday} appointment${summary.appointmentsToday === 1 ? "" : "s"} across both locations` : "Loading today’s appointments..."}</p>
             </div>
             <a href="/appointments" className="text-sm font-medium text-brand-500 hover:text-brand-600">View appointments</a>
           </div>
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {appointments.map(([time, customer, service, therapist, status]) => (
-              <div key={`${time}-${customer}`} className="grid grid-cols-[56px_1fr_auto] items-center gap-4 px-5 py-4 sm:grid-cols-[72px_1fr_100px_90px]">
-                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{time}</span>
+            {!summary ? (
+              <p className="px-5 py-8 text-sm text-gray-500 dark:text-gray-400">Loading today’s appointments...</p>
+            ) : summary.todaySchedule.length === 0 ? (
+              <p className="px-5 py-8 text-sm text-gray-500 dark:text-gray-400">No appointments scheduled for today.</p>
+            ) : summary.todaySchedule.map((appointment) => (
+              <div key={appointment.id} className="grid grid-cols-[56px_1fr_auto] items-center gap-4 px-5 py-4 sm:grid-cols-[72px_1fr_100px_90px]">
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{new Intl.DateTimeFormat("en-NG", { timeZone: "Africa/Lagos", hour: "2-digit", minute: "2-digit" }).format(new Date(appointment.startsAt))}</span>
                 <div>
-                  <p className="text-sm font-medium text-gray-800 dark:text-white/90">{customer}</p>
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{service}</p>
+                  <p className="text-sm font-medium text-gray-800 dark:text-white/90">{appointment.customer.firstName} {appointment.customer.lastName}</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{appointment.services.map((service) => service.name).join(", ") || "Spa treatment"} · {appointment.location.city}</p>
                 </div>
-                <span className="hidden text-sm text-gray-500 dark:text-gray-400 sm:block">{therapist}</span>
-                <span className="rounded-full bg-brand-50 px-2.5 py-1 text-center text-xs font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">{status}</span>
+                <span className="hidden text-sm text-gray-500 dark:text-gray-400 sm:block">{appointment.therapist ? `${appointment.therapist.firstName} ${appointment.therapist.lastName}` : "Unassigned"}</span>
+                <span className="rounded-full bg-brand-50 px-2.5 py-1 text-center text-xs font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">{appointment.status.replaceAll("_", " ")}</span>
               </div>
             ))}
           </div>
