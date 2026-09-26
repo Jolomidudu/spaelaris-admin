@@ -66,7 +66,7 @@ export default function SpaDashboard() {
           <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">Good morning</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{isTherapist ? "Your assigned appointments and treatment schedule for today." : "Here is what is happening across Spaelaris today."}</p>
         </div>
-        {!isTherapist && <a href="/appointments" className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-600">New appointment</a>}
+        {!isTherapist && <a href="/appointments" className="rounded-lg bg-gray-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-600">New appointment</a>}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
