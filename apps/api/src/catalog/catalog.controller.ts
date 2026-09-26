@@ -20,9 +20,8 @@ class CreatePublicBookingDto {
   @MaxLength(30)
   phone!: string;
 
-  @IsOptional()
   @IsEmail()
-  email?: string;
+  email!: string;
 
   @IsString()
   @MinLength(1)

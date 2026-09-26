@@ -12,13 +12,14 @@ const auth_module_1 = require("../auth/auth.module");
 const payments_controller_1 = require("./payments.controller");
 const payments_service_1 = require("./payments.service");
 const paystack_controller_1 = require("./paystack.controller");
+const public_booking_payments_controller_1 = require("./public-booking-payments.controller");
 let PaymentsModule = class PaymentsModule {
 };
 exports.PaymentsModule = PaymentsModule;
 exports.PaymentsModule = PaymentsModule = __decorate([
     (0, common_1.Module)({
         imports: [auth_module_1.AuthModule],
-        controllers: [payments_controller_1.PaymentsController, paystack_controller_1.PaystackController],
+        controllers: [payments_controller_1.PaymentsController, paystack_controller_1.PaystackController, public_booking_payments_controller_1.PublicBookingPaymentsController],
         providers: [payments_service_1.PaymentsService],
     })
 ], PaymentsModule);

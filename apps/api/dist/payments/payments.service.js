@@ -18,6 +18,128 @@ let PaymentsService = class PaymentsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
+    async initializeAppointmentPayment(appointmentId) {
+        const appointment = await this.prisma.appointment.findUnique({
+            where: { id: appointmentId },
+            select: {
+                id: true,
+                status: true,
+                customer: { select: { email: true } },
+                services: { select: { unitPriceKobo: true, quantity: true } },
+            },
+        });
+        if (!appointment)
+            throw new common_1.NotFoundException('Appointment was not found');
+        if (appointment.status !== 'PENDING')
+            throw new common_1.BadRequestException('Only pending appointments can be paid online');
+        if (!appointment.customer.email)
+            throw new common_1.BadRequestException('An email address is required for Paystack checkout');
+        const amountKobo = appointment.services.reduce((total, service) => total + service.unitPriceKobo * service.quantity, 0);
+        if (amountKobo < 1)
+            throw new common_1.BadRequestException('Appointment has no payable services');
+        const secret = process.env.PAYSTACK_SECRET_KEY;
+        if (!secret)
+            throw new common_1.BadRequestException('Paystack is not configured');
+        const reference = `spaelaris-${appointment.id}-${(0, node_crypto_1.randomUUID)()}`;
+        await this.prisma.payment.updateMany({
+            where: { appointmentId, status: client_1.PaymentStatus.PENDING, method: client_1.PaymentMethod.PAYSTACK },
+            data: { status: client_1.PaymentStatus.FAILED },
+        });
+        const payment = await this.prisma.payment.create({
+            data: {
+                appointmentId,
+                reference,
+                amountKobo,
+                method: client_1.PaymentMethod.PAYSTACK,
+                status: client_1.PaymentStatus.PENDING,
+            },
+        });
+        const webBaseUrl = (process.env.CUSTOMER_WEB_URL ?? 'https://spaelaris.vercel.app').replace(/\/+$/, '');
+        const response = await fetch('https://api.paystack.co/transaction/initialize', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${secret}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: appointment.customer.email,
+                amount: amountKobo,
+                reference: payment.reference,
+                callback_url: `${webBaseUrl}/book`,
+                metadata: { appointmentId: appointment.id },
+            }),
+        });
+        const payload = (await response.json());
+        if (!response.ok || !payload.status || !payload.data?.authorization_url) {
+            await this.prisma.payment.update({ where: { id: payment.id }, data: { status: client_1.PaymentStatus.FAILED } });
+            throw new common_1.BadRequestException(payload.message || 'Paystack initialization failed');
+        }
+        return {
+            reference: payment.reference,
+            amountKobo,
+            authorizationUrl: payload.data.authorization_url,
+        };
+    }
+    async verifyAppointmentPayment(reference) {
+        const payment = await this.prisma.payment.findUnique({
+            where: { reference },
+            select: {
+                id: true,
+                reference: true,
+                amountKobo: true,
+                status: true,
+                method: true,
+                appointment: {
+                    select: {
+                        id: true,
+                        startsAt: true,
+                        endsAt: true,
+                        status: true,
+                        location: { select: { name: true, city: true } },
+                        therapist: { select: { firstName: true, lastName: true } },
+                        room: { select: { name: true } },
+                        services: { select: { name: true, unitPriceKobo: true, durationMinutes: true } },
+                    },
+                },
+            },
+        });
+        if (!payment || payment.method !== client_1.PaymentMethod.PAYSTACK)
+            throw new common_1.NotFoundException('Payment reference was not found');
+        if (payment.status !== client_1.PaymentStatus.PAID) {
+            const secret = process.env.PAYSTACK_SECRET_KEY;
+            if (!secret)
+                throw new common_1.BadRequestException('Paystack is not configured');
+            const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(payment.reference)}`, {
+                headers: { Authorization: `Bearer ${secret}` },
+            });
+            const payload = (await response.json());
+            if (!response.ok || !payload.status)
+                throw new common_1.BadRequestException(payload.message || 'Unable to verify payment');
+            if (payload.data?.status === 'success') {
+                if (payload.data.reference !== payment.reference || payload.data.amount !== payment.amountKobo || payload.data.currency !== 'NGN') {
+                    throw new common_1.BadRequestException('Paystack payment details do not match this appointment');
+                }
+                await this.prisma.$transaction([
+                    this.prisma.payment.update({
+                        where: { id: payment.id },
+                        data: { status: client_1.PaymentStatus.PAID, paidAt: new Date() },
+                    }),
+                    this.prisma.appointment.updateMany({
+                        where: { id: payment.appointment.id, status: 'PENDING' },
+                        data: { status: 'CONFIRMED' },
+                    }),
+                ]);
+                payment.status = client_1.PaymentStatus.PAID;
+                payment.appointment.status = 'CONFIRMED';
+            }
+        }
+        return {
+            reference: payment.reference,
+            status: payment.status,
+            amountKobo: payment.amountKobo,
+            appointment: payment.appointment,
+        };
+    }
     async initialize(data) {
         const secret = process.env.PAYSTACK_SECRET_KEY;
         if (!secret)
@@ -54,10 +176,29 @@ let PaymentsService = class PaymentsService {
         const data = body.data;
         if (body.event !== 'charge.success' || !data?.reference)
             return { received: true };
-        await this.prisma.payment.updateMany({
+        const payment = await this.prisma.payment.findUnique({
             where: { reference: data.reference },
-            data: { status: client_1.PaymentStatus.PAID, paidAt: new Date() },
+            select: { id: true, appointmentId: true, amountKobo: true, status: true },
         });
+        if (!payment)
+            return { received: true };
+        if (data.status !== 'success' || data.amount !== payment.amountKobo || data.currency !== 'NGN') {
+            throw new common_1.BadRequestException('Paystack webhook details do not match this payment');
+        }
+        if (payment.status === client_1.PaymentStatus.PAID)
+            return { received: true };
+        if (payment.status !== client_1.PaymentStatus.PENDING)
+            return { received: true };
+        await this.prisma.$transaction([
+            this.prisma.payment.update({
+                where: { id: payment.id },
+                data: { status: client_1.PaymentStatus.PAID, paidAt: new Date() },
+            }),
+            this.prisma.appointment.updateMany({
+                where: { id: payment.appointmentId, status: 'PENDING' },
+                data: { status: 'CONFIRMED' },
+            }),
+        ]);
         return { received: true };
     }
     async create(data) {

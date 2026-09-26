@@ -297,15 +297,25 @@ let PublicBookingService = class PublicBookingService {
                     throw new common_1.ConflictException('No treatment room is available for that time');
                 const phone = data.phone.trim();
                 const existingCustomer = await transaction.customer.findUnique({ where: { phone } });
-                const customer = existingCustomer ?? await transaction.customer.create({
-                    data: {
-                        firstName: data.firstName.trim(),
-                        lastName: data.lastName.trim(),
-                        phone,
-                        email: data.email?.trim() || undefined,
-                    },
-                    select: { id: true },
-                });
+                const customer = existingCustomer
+                    ? await transaction.customer.update({
+                        where: { id: existingCustomer.id },
+                        data: {
+                            firstName: data.firstName.trim(),
+                            lastName: data.lastName.trim(),
+                            email: data.email.trim(),
+                        },
+                        select: { id: true },
+                    })
+                    : await transaction.customer.create({
+                        data: {
+                            firstName: data.firstName.trim(),
+                            lastName: data.lastName.trim(),
+                            phone,
+                            email: data.email.trim(),
+                        },
+                        select: { id: true },
+                    });
                 return transaction.appointment.create({
                     data: {
                         customerId: customer.id,

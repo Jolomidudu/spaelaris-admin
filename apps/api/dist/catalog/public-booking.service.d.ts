@@ -28,7 +28,7 @@ export declare class PublicBookingService {
         firstName: string;
         lastName: string;
         phone: string;
-        email?: string;
+        email: string;
         locationSlug: string;
         serviceSlugs: string[];
         therapistProfileId: string;

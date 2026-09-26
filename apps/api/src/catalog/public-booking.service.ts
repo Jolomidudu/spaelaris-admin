@@ -206,7 +206,7 @@ export class PublicBookingService {
     firstName: string;
     lastName: string;
     phone: string;
-    email?: string;
+    email: string;
     locationSlug: string;
     serviceSlugs: string[];
     therapistProfileId: string;
@@ -334,12 +334,22 @@ export class PublicBookingService {
 
         const phone = data.phone.trim();
         const existingCustomer = await transaction.customer.findUnique({ where: { phone } });
-        const customer = existingCustomer ?? await transaction.customer.create({
+        const customer = existingCustomer
+          ? await transaction.customer.update({
+            where: { id: existingCustomer.id },
+            data: {
+              firstName: data.firstName.trim(),
+              lastName: data.lastName.trim(),
+              email: data.email.trim(),
+            },
+            select: { id: true },
+          })
+          : await transaction.customer.create({
           data: {
             firstName: data.firstName.trim(),
             lastName: data.lastName.trim(),
             phone,
-            email: data.email?.trim() || undefined,
+            email: data.email.trim(),
           },
           select: { id: true },
         });
