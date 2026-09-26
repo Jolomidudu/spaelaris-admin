@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StaffController = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
+const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const permissions_1 = require("../auth/permissions");
@@ -74,6 +75,33 @@ __decorate([
     (0, class_validator_1.MinLength)(8),
     __metadata("design:type", String)
 ], UpdateStaffAccessDto.prototype, "password", void 0);
+class StaffAvailabilityDayDto {
+}
+__decorate([
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(6),
+    __metadata("design:type", Number)
+], StaffAvailabilityDayDto.prototype, "dayOfWeek", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(/^([01]\d|2[0-3]):[0-5]\d$/),
+    __metadata("design:type", String)
+], StaffAvailabilityDayDto.prototype, "startTime", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(/^([01]\d|2[0-3]):[0-5]\d$/),
+    __metadata("design:type", String)
+], StaffAvailabilityDayDto.prototype, "endTime", void 0);
+class UpdateStaffAvailabilityDto {
+}
+__decorate([
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMaxSize)(28),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => StaffAvailabilityDayDto),
+    __metadata("design:type", Array)
+], UpdateStaffAvailabilityDto.prototype, "availability", void 0);
 let StaffController = class StaffController {
     constructor(staffService) {
         this.staffService = staffService;
@@ -86,6 +114,9 @@ let StaffController = class StaffController {
     }
     updateAccess(id, body) {
         return this.staffService.updateAccess(id, body);
+    }
+    updateAvailability(id, body) {
+        return this.staffService.updateAvailability(id, body.availability);
     }
 };
 exports.StaffController = StaffController;
@@ -110,6 +141,14 @@ __decorate([
     __metadata("design:paramtypes", [String, UpdateStaffAccessDto]),
     __metadata("design:returntype", void 0)
 ], StaffController.prototype, "updateAccess", null);
+__decorate([
+    (0, common_1.Patch)(':id/availability'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateStaffAvailabilityDto]),
+    __metadata("design:returntype", void 0)
+], StaffController.prototype, "updateAvailability", null);
 exports.StaffController = StaffController = __decorate([
     (0, common_1.Controller)('staff'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),

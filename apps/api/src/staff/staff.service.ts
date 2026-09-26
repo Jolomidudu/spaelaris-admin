@@ -82,6 +82,47 @@ export class StaffService {
     });
   }
 
+  async updateAvailability(
+    staffProfileId: string,
+    availability: Array<{ dayOfWeek: number; startTime: string; endTime: string }>,
+  ) {
+    const profile = await this.prisma.staffProfile.findUnique({
+      where: { id: staffProfileId },
+      select: { id: true, user: { select: { role: true } } },
+    });
+    if (!profile || profile.user.role !== UserRole.THERAPIST) {
+      throw new BadRequestException('Therapist profile was not found');
+    }
+
+    const byDay = new Map<number, Array<{ start: number; end: number }>>();
+    for (const entry of availability) {
+      const start = Number(entry.startTime.slice(0, 2)) * 60 + Number(entry.startTime.slice(3));
+      const end = Number(entry.endTime.slice(0, 2)) * 60 + Number(entry.endTime.slice(3));
+      if (end <= start) throw new BadRequestException('Availability end time must be later than start time');
+      const dayEntries = byDay.get(entry.dayOfWeek) ?? [];
+      if (dayEntries.some((range) => start < range.end && end > range.start)) {
+        throw new BadRequestException('Availability periods cannot overlap on the same day');
+      }
+      dayEntries.push({ start, end });
+      byDay.set(entry.dayOfWeek, dayEntries);
+    }
+
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.staffAvailability.deleteMany({ where: { staffProfileId } });
+      if (availability.length > 0) {
+        await transaction.staffAvailability.createMany({
+          data: availability.map((entry) => ({ staffProfileId, ...entry })),
+        });
+      }
+    });
+
+    return this.prisma.staffAvailability.findMany({
+      where: { staffProfileId },
+      orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+      select: { id: true, dayOfWeek: true, startTime: true, endTime: true },
+    });
+  }
+
   list() {
     return this.prisma.staffProfile.findMany({
       where: {
@@ -98,6 +139,10 @@ export class StaffService {
         bio: true,
         photoUrl: true,
         isBookable: true,
+        availability: {
+          orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+          select: { id: true, dayOfWeek: true, startTime: true, endTime: true },
+        },
         user: {
           select: {
             id: true,

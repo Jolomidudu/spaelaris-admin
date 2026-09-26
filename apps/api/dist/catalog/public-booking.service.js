@@ -182,6 +182,169 @@ let PublicBookingService = class PublicBookingService {
             slots: slots.sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.therapistName.localeCompare(b.therapistName)),
         };
     }
+    async createBooking(data) {
+        if (new Set(data.serviceSlugs).size !== data.serviceSlugs.length || data.serviceSlugs.length === 0) {
+            throw new common_1.BadRequestException('Choose one or more unique services');
+        }
+        const startsAt = new Date(data.startsAt);
+        const endsAt = new Date(data.endsAt);
+        if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
+            throw new common_1.BadRequestException('The selected appointment time is invalid');
+        }
+        const location = await this.prisma.location.findUnique({ where: { slug: data.locationSlug } });
+        if (!location?.isActive)
+            throw new common_1.BadRequestException('Location was not found');
+        const localDateParts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: location.timezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).formatToParts(startsAt);
+        const localDate = `${localDateParts.find(({ type }) => type === 'year')?.value}-${localDateParts.find(({ type }) => type === 'month')?.value}-${localDateParts.find(({ type }) => type === 'day')?.value}`;
+        const availability = await this.availability(data.locationSlug, localDate, data.serviceSlugs);
+        const matchingSlot = availability.slots.find((slot) => slot.therapistId === data.therapistProfileId &&
+            new Date(slot.startsAt).getTime() === startsAt.getTime() &&
+            new Date(slot.endsAt).getTime() === endsAt.getTime());
+        if (!matchingSlot)
+            throw new common_1.ConflictException('That appointment time is no longer available. Please select another slot.');
+        const services = await this.prisma.service.findMany({
+            where: { slug: { in: data.serviceSlugs }, isActive: true, category: { isActive: true } },
+            select: { id: true, name: true, durationMinutes: true, priceKobo: true },
+        });
+        if (services.length !== data.serviceSlugs.length || services.some((service) => service.durationMinutes === null)) {
+            throw new common_1.BadRequestException('One or more selected services cannot be booked online');
+        }
+        try {
+            return await this.prisma.$transaction(async (transaction) => {
+                const therapist = await transaction.staffProfile.findFirst({
+                    where: {
+                        id: data.therapistProfileId,
+                        locationId: location.id,
+                        isBookable: true,
+                        user: { role: client_1.UserRole.THERAPIST, status: client_1.UserStatus.ACTIVE },
+                        services: { some: { serviceId: { in: services.map(({ id }) => id) } } },
+                    },
+                    select: {
+                        userId: true,
+                        availability: { where: { dayOfWeek: getWeekday(localDate, location.timezone) }, select: { startTime: true, endTime: true } },
+                        services: { select: { serviceId: true, service: { select: { isActive: true, category: { select: { isActive: true } } } } } },
+                    },
+                });
+                if (!therapist)
+                    throw new common_1.ConflictException('That therapist is no longer available for these services');
+                const linkedServiceIds = new Set(therapist.services
+                    .filter(({ service }) => service.isActive && service.category.isActive)
+                    .map(({ serviceId }) => serviceId));
+                if (!services.every(({ id }) => linkedServiceIds.has(id))) {
+                    throw new common_1.ConflictException('That therapist is no longer available for all selected services');
+                }
+                const localStart = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: location.timezone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hourCycle: 'h23',
+                }).format(startsAt);
+                const localEnd = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: location.timezone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hourCycle: 'h23',
+                }).format(endsAt);
+                const startMinute = Number(localStart.slice(0, 2)) * 60 + Number(localStart.slice(3));
+                const endMinute = Number(localEnd.slice(0, 2)) * 60 + Number(localEnd.slice(3));
+                const durationMinutes = Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000);
+                const withinSchedule = therapist.availability.some((period) => {
+                    const periodStart = Number(period.startTime.slice(0, 2)) * 60 + Number(period.startTime.slice(3));
+                    const periodEnd = Number(period.endTime.slice(0, 2)) * 60 + Number(period.endTime.slice(3));
+                    return startMinute >= periodStart && endMinute <= periodEnd;
+                });
+                if (!withinSchedule || durationMinutes !== availability.totalDurationMinutes) {
+                    throw new common_1.ConflictException('That appointment time is outside the therapist’s current availability');
+                }
+                const [timeOff, therapistConflict, rooms] = await Promise.all([
+                    transaction.staffTimeOff.findFirst({
+                        where: { staffProfileId: data.therapistProfileId, startsAt: { lt: endsAt }, endsAt: { gt: startsAt } },
+                        select: { id: true },
+                    }),
+                    transaction.appointment.findFirst({
+                        where: {
+                            therapistId: therapist.userId,
+                            startsAt: { lt: endsAt },
+                            endsAt: { gt: startsAt },
+                            status: { in: BUSY_STATUSES },
+                        },
+                        select: { id: true },
+                    }),
+                    transaction.room.findMany({
+                        where: { locationId: location.id, isActive: true },
+                        select: { id: true },
+                    }),
+                ]);
+                if (timeOff || therapistConflict)
+                    throw new common_1.ConflictException('That appointment time has just been taken');
+                const roomConflicts = await transaction.appointment.findMany({
+                    where: {
+                        roomId: { in: rooms.map(({ id }) => id) },
+                        startsAt: { lt: endsAt },
+                        endsAt: { gt: startsAt },
+                        status: { in: BUSY_STATUSES },
+                    },
+                    select: { roomId: true },
+                });
+                const busyRoomIds = new Set(roomConflicts.map(({ roomId }) => roomId));
+                const room = rooms.find(({ id }) => !busyRoomIds.has(id));
+                if (!room)
+                    throw new common_1.ConflictException('No treatment room is available for that time');
+                const phone = data.phone.trim();
+                const existingCustomer = await transaction.customer.findUnique({ where: { phone } });
+                const customer = existingCustomer ?? await transaction.customer.create({
+                    data: {
+                        firstName: data.firstName.trim(),
+                        lastName: data.lastName.trim(),
+                        phone,
+                        email: data.email?.trim() || undefined,
+                    },
+                    select: { id: true },
+                });
+                return transaction.appointment.create({
+                    data: {
+                        customerId: customer.id,
+                        locationId: location.id,
+                        therapistId: therapist.userId,
+                        roomId: room.id,
+                        startsAt,
+                        endsAt,
+                        status: client_1.AppointmentStatus.PENDING,
+                        notes: data.notes?.trim() || undefined,
+                        services: {
+                            create: services.map((service) => ({
+                                serviceId: service.id,
+                                name: service.name,
+                                durationMinutes: service.durationMinutes ?? 0,
+                                unitPriceKobo: service.priceKobo,
+                            })),
+                        },
+                    },
+                    select: {
+                        id: true,
+                        startsAt: true,
+                        endsAt: true,
+                        status: true,
+                        services: { select: { name: true, unitPriceKobo: true, durationMinutes: true } },
+                        location: { select: { name: true, city: true } },
+                        therapist: { select: { firstName: true, lastName: true } },
+                        room: { select: { name: true } },
+                    },
+                });
+            }, { isolationLevel: client_1.Prisma.TransactionIsolationLevel.Serializable });
+        }
+        catch (error) {
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+                throw new common_1.ConflictException('That appointment time has just been taken. Please select another slot.');
+            }
+            throw error;
+        }
+    }
 };
 exports.PublicBookingService = PublicBookingService;
 exports.PublicBookingService = PublicBookingService = __decorate([

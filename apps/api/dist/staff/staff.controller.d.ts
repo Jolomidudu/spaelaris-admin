@@ -14,11 +14,31 @@ declare class UpdateStaffAccessDto {
     role: UserRole;
     password: string;
 }
+declare class StaffAvailabilityDayDto {
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+}
+declare class UpdateStaffAvailabilityDto {
+    availability: StaffAvailabilityDayDto[];
+}
 export declare class StaffController {
     private readonly staffService;
     constructor(staffService: StaffService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
+        bio: string | null;
+        photoUrl: string | null;
+        isBookable: boolean;
+        user: {
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            phone: string | null;
+            role: import(".prisma/client").$Enums.UserRole;
+            status: import(".prisma/client").$Enums.UserStatus;
+        };
         location: {
             id: string;
             name: string;
@@ -30,32 +50,32 @@ export declare class StaffController {
                 name: string;
             };
         }[];
-        photoUrl: string | null;
-        user: {
-            status: import(".prisma/client").$Enums.UserStatus;
+        availability: {
             id: string;
-            firstName: string;
-            lastName: string;
-            email: string;
-            phone: string | null;
-            role: import(".prisma/client").$Enums.UserRole;
-        };
-        bio: string | null;
-        isBookable: boolean;
+            startTime: string;
+            dayOfWeek: number;
+            endTime: string;
+        }[];
     }[]>;
     create(body: CreateStaffDto): Promise<{
         id: string;
+        email: string;
         firstName: string;
         lastName: string;
-        email: string;
     }>;
     updateAccess(id: string, body: UpdateStaffAccessDto): Promise<{
-        status: import(".prisma/client").$Enums.UserStatus;
         id: string;
+        email: string;
         firstName: string;
         lastName: string;
-        email: string;
         role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
     }>;
+    updateAvailability(id: string, body: UpdateStaffAvailabilityDto): Promise<{
+        id: string;
+        startTime: string;
+        dayOfWeek: number;
+        endTime: string;
+    }[]>;
 }
 export {};

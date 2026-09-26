@@ -76,6 +76,41 @@ let StaffService = class StaffService {
             select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true },
         });
     }
+    async updateAvailability(staffProfileId, availability) {
+        const profile = await this.prisma.staffProfile.findUnique({
+            where: { id: staffProfileId },
+            select: { id: true, user: { select: { role: true } } },
+        });
+        if (!profile || profile.user.role !== client_1.UserRole.THERAPIST) {
+            throw new common_1.BadRequestException('Therapist profile was not found');
+        }
+        const byDay = new Map();
+        for (const entry of availability) {
+            const start = Number(entry.startTime.slice(0, 2)) * 60 + Number(entry.startTime.slice(3));
+            const end = Number(entry.endTime.slice(0, 2)) * 60 + Number(entry.endTime.slice(3));
+            if (end <= start)
+                throw new common_1.BadRequestException('Availability end time must be later than start time');
+            const dayEntries = byDay.get(entry.dayOfWeek) ?? [];
+            if (dayEntries.some((range) => start < range.end && end > range.start)) {
+                throw new common_1.BadRequestException('Availability periods cannot overlap on the same day');
+            }
+            dayEntries.push({ start, end });
+            byDay.set(entry.dayOfWeek, dayEntries);
+        }
+        await this.prisma.$transaction(async (transaction) => {
+            await transaction.staffAvailability.deleteMany({ where: { staffProfileId } });
+            if (availability.length > 0) {
+                await transaction.staffAvailability.createMany({
+                    data: availability.map((entry) => ({ staffProfileId, ...entry })),
+                });
+            }
+        });
+        return this.prisma.staffAvailability.findMany({
+            where: { staffProfileId },
+            orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+            select: { id: true, dayOfWeek: true, startTime: true, endTime: true },
+        });
+    }
     list() {
         return this.prisma.staffProfile.findMany({
             where: {
@@ -92,6 +127,10 @@ let StaffService = class StaffService {
                 bio: true,
                 photoUrl: true,
                 isBookable: true,
+                availability: {
+                    orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+                    select: { id: true, dayOfWeek: true, startTime: true, endTime: true },
+                },
                 user: {
                     select: {
                         id: true,

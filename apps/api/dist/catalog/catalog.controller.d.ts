@@ -1,5 +1,17 @@
 import { CatalogService } from './catalog.service';
 import { PublicBookingService } from './public-booking.service';
+declare class CreatePublicBookingDto {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    email?: string;
+    locationSlug: string;
+    serviceSlugs: string[];
+    therapistProfileId: string;
+    startsAt: string;
+    endsAt: string;
+    notes?: string;
+}
 export declare class CatalogController {
     private readonly catalogService;
     private readonly publicBookingService;
@@ -73,4 +85,27 @@ export declare class CatalogController {
             availableRoomCount: number;
         }[];
     }>;
+    createBooking(body: CreatePublicBookingDto): Promise<{
+        startsAt: Date;
+        endsAt: Date;
+        location: {
+            name: string;
+            city: string;
+        };
+        id: string;
+        services: {
+            name: string;
+            durationMinutes: number;
+            unitPriceKobo: number;
+        }[];
+        status: import(".prisma/client").$Enums.AppointmentStatus;
+        room: {
+            name: string;
+        } | null;
+        therapist: {
+            firstName: string;
+            lastName: string;
+        } | null;
+    }>;
 }
+export {};

@@ -13,6 +13,7 @@ type StaffMember = {
   id: string;
   bio: string | null;
   isBookable: boolean;
+  availability: AvailabilityPeriod[];
   user: {
     firstName: string;
     lastName: string;
@@ -29,6 +30,15 @@ type StaffMember = {
     };
   }[];
 };
+
+type AvailabilityPeriod = {
+  id?: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+};
+
+const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 function getStatusClasses(status: string) {
   if (status === "Bookable") {
@@ -55,6 +65,10 @@ export default function StaffDirectoryPage() {
   const [phone, setPhone] = useState("");
   const [locationSlug, setLocationSlug] = useState("lagos");
   const [serviceSlugs, setServiceSlugs] = useState<string[]>(["deep-tissue-massage"]);
+  const [editingAvailability, setEditingAvailability] = useState<StaffMember | null>(null);
+  const [availabilityDraft, setAvailabilityDraft] = useState<AvailabilityPeriod[]>([]);
+  const [availabilityError, setAvailabilityError] = useState("");
+  const [isSavingAvailability, setIsSavingAvailability] = useState(false);
 
   useEffect(() => {
     async function loadStaff() {
@@ -90,6 +104,52 @@ export default function StaffDirectoryPage() {
     setServiceSlugs((current) => current.includes(serviceSlug)
       ? current.filter((value) => value !== serviceSlug)
       : [...current, serviceSlug]);
+  }
+
+  function openAvailabilityEditor(staff: StaffMember) {
+    setEditingAvailability(staff);
+    setAvailabilityDraft(staff.availability.map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime })));
+    setAvailabilityError("");
+  }
+
+  function updateAvailabilityPeriod(index: number, field: keyof AvailabilityPeriod, value: string | number) {
+    setAvailabilityDraft((current) => current.map((period, periodIndex) =>
+      periodIndex === index ? { ...period, [field]: value } : period,
+    ));
+  }
+
+  async function saveAvailability(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingAvailability) return;
+    setAvailabilityError("");
+    setIsSavingAvailability(true);
+    const token = getAccessToken();
+    if (!token) {
+      setAvailabilityError("Your session has expired. Please sign in again.");
+      setIsSavingAvailability(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/staff/${editingAvailability.id}/availability`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ availability: availabilityDraft }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to save therapist availability.");
+      }
+      setStaffData((current) => current.map((staff) => staff.id === editingAvailability.id
+        ? { ...staff, availability: payload as AvailabilityPeriod[] }
+        : staff,
+      ));
+      setEditingAvailability(null);
+    } catch (saveError) {
+      setAvailabilityError(saveError instanceof Error ? saveError.message : "Unable to save therapist availability.");
+    } finally {
+      setIsSavingAvailability(false);
+    }
   }
 
   async function handleCreateStaff(event: React.FormEvent<HTMLFormElement>) {
@@ -181,6 +241,7 @@ export default function StaffDirectoryPage() {
                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Services</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Contact</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Schedule</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-800 dark:bg-gray-900">
@@ -202,6 +263,9 @@ export default function StaffDirectoryPage() {
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusClasses(status)}`}>
                       {status}
                     </span>
+                  </td>
+                  <td className="px-5 py-4 text-sm">
+                    {staff.user.role === "THERAPIST" && <button type="button" onClick={() => openAvailabilityEditor(staff)} className="font-medium text-brand-500 hover:text-brand-600">Availability</button>}
                   </td>
                 </tr>
                 );
@@ -252,6 +316,36 @@ export default function StaffDirectoryPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {editingAvailability && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="availability-title">
+          <form onSubmit={saveAvailability} className="max-h-full w-full max-w-2xl space-y-5 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="availability-title" className="text-lg font-semibold text-gray-800 dark:text-white/90">Weekly availability</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{editingAvailability.user.firstName} {editingAvailability.user.lastName} · {editingAvailability.location.name}</p>
+              </div>
+              <button type="button" onClick={() => setEditingAvailability(null)} className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Close</button>
+            </div>
+            {availabilityError && <p role="alert" className="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">{availabilityError}</p>}
+            {availabilityDraft.length === 0 && <p className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-500 dark:bg-white/[0.03] dark:text-gray-400">No weekly hours set. Add the days and hours this therapist accepts appointments.</p>}
+            <div className="space-y-3">
+              {availabilityDraft.map((period, index) => (
+                <div key={`${period.dayOfWeek}-${index}`} className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
+                  <label className="text-xs text-gray-500 dark:text-gray-400">Day<select value={period.dayOfWeek} onChange={(event) => updateAvailabilityPeriod(index, "dayOfWeek", Number(event.target.value))} className="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-transparent px-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">{weekdays.map((day, dayIndex) => <option key={day} value={dayIndex}>{day}</option>)}</select></label>
+                  <label className="text-xs text-gray-500 dark:text-gray-400">From<input type="time" required value={period.startTime} onChange={(event) => updateAvailabilityPeriod(index, "startTime", event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-transparent px-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" /></label>
+                  <label className="text-xs text-gray-500 dark:text-gray-400">To<input type="time" required value={period.endTime} onChange={(event) => updateAvailabilityPeriod(index, "endTime", event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-transparent px-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" /></label>
+                  <button type="button" aria-label={`Remove ${weekdays[period.dayOfWeek]} availability`} onClick={() => setAvailabilityDraft((current) => current.filter((_, periodIndex) => periodIndex !== index))} className="h-10 px-3 text-sm text-error-500 hover:text-error-600">Remove</button>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+              <button type="button" onClick={() => setAvailabilityDraft((current) => [...current, { dayOfWeek: 1, startTime: "", endTime: "" }])} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-white/[0.04]">Add hours</button>
+              <div className="flex gap-3"><Button type="button" variant="outline" size="sm" onClick={() => setEditingAvailability(null)}>Cancel</Button><Button type="submit" size="sm" disabled={isSavingAvailability}>{isSavingAvailability ? "Saving..." : "Save availability"}</Button></div>
+            </div>
+          </form>
         </div>
       )}
     </div>

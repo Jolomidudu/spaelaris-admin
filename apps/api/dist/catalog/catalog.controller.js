@@ -14,8 +14,67 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CatalogController = void 0;
 const common_1 = require("@nestjs/common");
+const common_2 = require("@nestjs/common");
+const class_validator_1 = require("class-validator");
 const catalog_service_1 = require("./catalog.service");
 const public_booking_service_1 = require("./public-booking.service");
+class CreatePublicBookingDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    (0, class_validator_1.MaxLength)(80),
+    __metadata("design:type", String)
+], CreatePublicBookingDto.prototype, "firstName", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    (0, class_validator_1.MaxLength)(80),
+    __metadata("design:type", String)
+], CreatePublicBookingDto.prototype, "lastName", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(7),
+    (0, class_validator_1.MaxLength)(30),
+    __metadata("design:type", String)
+], CreatePublicBookingDto.prototype, "phone", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEmail)(),
+    __metadata("design:type", String)
+], CreatePublicBookingDto.prototype, "email", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], CreatePublicBookingDto.prototype, "locationSlug", void 0);
+__decorate([
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMinSize)(1),
+    (0, class_validator_1.ArrayMaxSize)(12),
+    (0, class_validator_1.ArrayUnique)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], CreatePublicBookingDto.prototype, "serviceSlugs", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], CreatePublicBookingDto.prototype, "therapistProfileId", void 0);
+__decorate([
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], CreatePublicBookingDto.prototype, "startsAt", void 0);
+__decorate([
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], CreatePublicBookingDto.prototype, "endsAt", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(1000),
+    __metadata("design:type", String)
+], CreatePublicBookingDto.prototype, "notes", void 0);
 let CatalogController = class CatalogController {
     constructor(catalogService, publicBookingService) {
         this.catalogService = catalogService;
@@ -32,6 +91,9 @@ let CatalogController = class CatalogController {
     }
     availability(locationSlug, date, serviceSlugs) {
         return this.publicBookingService.availability(locationSlug, date, (serviceSlugs ?? '').split(',').map((slug) => slug.trim()).filter(Boolean));
+    }
+    createBooking(body) {
+        return this.publicBookingService.createBooking(body);
     }
 };
 exports.CatalogController = CatalogController;
@@ -62,6 +124,13 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", void 0)
 ], CatalogController.prototype, "availability", null);
+__decorate([
+    (0, common_2.Post)('booking'),
+    __param(0, (0, common_2.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [CreatePublicBookingDto]),
+    __metadata("design:returntype", void 0)
+], CatalogController.prototype, "createBooking", null);
 exports.CatalogController = CatalogController = __decorate([
     (0, common_1.Controller)('public'),
     __metadata("design:paramtypes", [catalog_service_1.CatalogService,
