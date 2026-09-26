@@ -8,13 +8,21 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CatalogController = void 0;
 const common_1 = require("@nestjs/common");
 const catalog_service_1 = require("./catalog.service");
+const public_booking_service_1 = require("./public-booking.service");
 let CatalogController = class CatalogController {
-    constructor(catalogService) {
+    constructor(catalogService, publicBookingService) {
         this.catalogService = catalogService;
+        this.publicBookingService = publicBookingService;
+    }
+    locations() {
+        return this.publicBookingService.locations();
     }
     catalog() {
         return this.catalogService.catalog();
@@ -22,8 +30,17 @@ let CatalogController = class CatalogController {
     therapists() {
         return this.catalogService.therapists();
     }
+    availability(locationSlug, date, serviceSlugs) {
+        return this.publicBookingService.availability(locationSlug, date, (serviceSlugs ?? '').split(',').map((slug) => slug.trim()).filter(Boolean));
+    }
 };
 exports.CatalogController = CatalogController;
+__decorate([
+    (0, common_1.Get)('locations'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], CatalogController.prototype, "locations", null);
 __decorate([
     (0, common_1.Get)('catalog'),
     __metadata("design:type", Function),
@@ -36,8 +53,18 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], CatalogController.prototype, "therapists", null);
+__decorate([
+    (0, common_1.Get)('booking/availability'),
+    __param(0, (0, common_1.Query)('locationSlug')),
+    __param(1, (0, common_1.Query)('date')),
+    __param(2, (0, common_1.Query)('serviceSlugs')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], CatalogController.prototype, "availability", null);
 exports.CatalogController = CatalogController = __decorate([
     (0, common_1.Controller)('public'),
-    __metadata("design:paramtypes", [catalog_service_1.CatalogService])
+    __metadata("design:paramtypes", [catalog_service_1.CatalogService,
+        public_booking_service_1.PublicBookingService])
 ], CatalogController);
 //# sourceMappingURL=catalog.controller.js.map

@@ -1,27 +1,37 @@
 import { CatalogService } from './catalog.service';
+import { PublicBookingService } from './public-booking.service';
 export declare class CatalogController {
     private readonly catalogService;
-    constructor(catalogService: CatalogService);
+    private readonly publicBookingService;
+    constructor(catalogService: CatalogService, publicBookingService: PublicBookingService);
+    locations(): import(".prisma/client").Prisma.PrismaPromise<{
+        id: string;
+        name: string;
+        slug: string;
+        address: string;
+        city: string;
+        timezone: string;
+    }[]>;
     catalog(): import(".prisma/client").Prisma.PrismaPromise<{
         number: string | null;
         id: string;
-        services: {
-            id: string;
-            photoUrl: string | null;
-            name: string;
-            slug: string;
-            description: string | null;
-            durationMinutes: number | null;
-            includes: string[];
-            details: string | null;
-            benefits: string[];
-            priceKobo: number;
-        }[];
         name: string;
         slug: string;
         description: string | null;
         shortName: string | null;
         imageUrl: string | null;
+        services: {
+            id: string;
+            name: string;
+            slug: string;
+            description: string | null;
+            details: string | null;
+            benefits: string[];
+            includes: string[];
+            durationMinutes: number | null;
+            priceKobo: number;
+            photoUrl: string | null;
+        }[];
     }[]>;
     therapists(): Promise<{
         publicSlug: string;
@@ -50,4 +60,17 @@ export declare class CatalogController {
         clientsServed: number | null;
         languages: string[];
     }[]>;
+    availability(locationSlug: string, date: string, serviceSlugs: string): Promise<{
+        date: string;
+        locationSlug: string;
+        totalDurationMinutes: number;
+        slotIntervalMinutes: number;
+        slots: {
+            startsAt: string;
+            endsAt: string;
+            therapistId: string;
+            therapistName: string;
+            availableRoomCount: number;
+        }[];
+    }>;
 }
