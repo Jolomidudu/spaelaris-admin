@@ -28,7 +28,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
-    name: "Dashboard",
+    name: "Overview",
     path: "/",
   },
   {
@@ -52,7 +52,7 @@ const navItems: NavItem[] = [
     path: "/customers",
   },
   {
-    name: "Locations",
+    name: "Rooms &Locations",
     icon: <PageIcon />,
     path: "/rooms",
   },
@@ -61,7 +61,7 @@ const navItems: NavItem[] = [
 const othersItems: NavItem[] = [
   {
     icon: <PieChartIcon />,
-    name: "Reports",
+    name: "Analytics",
     path: "/line-chart",
   },
   {
@@ -204,7 +204,7 @@ const AppSidebar: React.FC = () => {
                     : "justify-start"
                 }`}
               >
-                {isExpanded || isHovered || isMobileOpen ? "Menu" : <HorizontaLDots />}
+                {isExpanded || isHovered || isMobileOpen ? "" : <HorizontaLDots />}
               </h2>
               {renderMenuItems(visibleNavItems)}
             </div>

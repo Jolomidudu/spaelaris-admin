@@ -74,12 +74,14 @@ export default function SpaDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="mb-2 text-sm font-medium text-brand-500">{greeting}</p>
-          <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">Good morning</h1>
+          <p className="mb-2 text-sm font-medium text-[#3f3f2e]-500">{greeting}</p>
+          <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">Good Day</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{isTherapist ? "Your assigned appointments and treatment schedule for today." : "Here is what is happening across Spaelaris today."}</p>
         </div>
         {!isTherapist && <a href="/appointments" className="rounded-lg bg-gray-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-600">New appointment</a>}
       </div>
+
+      
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {(isTherapist ? allMetrics.slice(0, 2) : isReceptionist ? allMetrics.filter((metric) => metric.label !== "Available therapists") : allMetrics).map((metric) => (
@@ -138,10 +140,7 @@ export default function SpaDashboard() {
         </section>
       </div>
 
-      <div className="rounded-2xl border border-dashed border-brand-200 bg-brand-50/60 px-5 py-4 dark:border-brand-500/30 dark:bg-brand-500/5">
-        <p className="text-sm font-medium text-brand-700 dark:text-brand-300">Operations foundation</p>
-        <p className="mt-1 text-sm text-brand-700/80 dark:text-brand-300/80">This dashboard is ready for live API data. The next vertical slice is staff authentication, customer lookup, and appointment creation.</p>
-      </div>
+      
     </div>
   );
 }
