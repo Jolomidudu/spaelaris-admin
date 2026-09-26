@@ -3,10 +3,10 @@ export declare class ServicesService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
+        isActive: boolean;
         id: string;
         name: string;
         slug: string;
-        isActive: boolean;
         description: string | null;
         durationMinutes: number | null;
         priceKobo: number;
@@ -32,10 +32,10 @@ export declare class ServicesService {
         durationMinutes?: number;
         priceNaira?: number;
     }): Promise<{
+        isActive: boolean;
         id: string;
         name: string;
         slug: string;
-        isActive: boolean;
         description: string | null;
         durationMinutes: number | null;
         priceKobo: number;
@@ -48,9 +48,9 @@ export declare class ServicesService {
     remove(id: string): Promise<{
         success: boolean;
         service: {
+            isActive: boolean;
             id: string;
             name: string;
-            isActive: boolean;
         };
     }>;
     create(data: {
@@ -60,10 +60,10 @@ export declare class ServicesService {
         durationMinutes: number;
         priceNaira: number;
     }): Promise<{
+        isActive: boolean;
         id: string;
         name: string;
         slug: string;
-        isActive: boolean;
         description: string | null;
         durationMinutes: number | null;
         priceKobo: number;

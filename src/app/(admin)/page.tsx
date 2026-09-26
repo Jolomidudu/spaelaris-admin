@@ -1,6 +1,7 @@
 "use client";
 
-import { getStoredAuth } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/api";
+import { getAccessToken, getStoredAuth } from "@/lib/auth";
 import { useEffect, useState } from "react";
 import React from "react";
 
@@ -12,6 +13,12 @@ const metrics = [
   { label: "Pending payments", value: "₦92,000", detail: "8 appointments to reconcile", tone: "text-error-500" },
 ];
 
+type DashboardSummary = {
+  staff: number;
+  services: number;
+  categories: number;
+};
+
 const appointments = [
   ["09:00", "Amaka Okafor", "Deep tissue massage", "Adaeze", "Checked in"],
   ["10:30", "Tolu Williams", "Glow facial", "Nneka", "Confirmed"],
@@ -21,14 +28,35 @@ const appointments = [
 
 export default function SpaDashboard() {
   const [role, setRole] = useState("OWNER");
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
 
   useEffect(() => {
     setRole(getStoredAuth()?.user.role ?? "OWNER");
+
+    const token = getAccessToken();
+    if (!token) return;
+
+    fetch(`${API_BASE_URL}/api/dashboard/summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to load dashboard summary");
+        return response.json() as Promise<DashboardSummary>;
+      })
+      .then(setSummary)
+      .catch(() => setSummary(null));
   }, []);
 
   const isTherapist = role === "THERAPIST";
   const isReceptionist = role === "RECEPTIONIST";
   const greeting = isTherapist ? "Your treatment day" : isReceptionist ? "Front desk overview" : "Spaelaris operations";
+  const inventoryMetrics = [
+    { label: "Active staff", value: summary ? String(summary.staff) : "-", detail: "Active staff accounts", tone: "text-brand-500" },
+    { label: "Active services", value: summary ? String(summary.services) : "-", detail: "Listed in the service catalog", tone: "text-success-500" },
+    { label: "Service categories", value: summary ? String(summary.categories) : "-", detail: "Active catalog categories", tone: "text-warning-500" },
+    { label: "Reviews", value: "435", detail: "Customer reviews", tone: "text-brand-500" },
+  ];
+  const allMetrics = [...metrics, ...inventoryMetrics];
 
   return (
     <div className="space-y-6">
@@ -42,7 +70,7 @@ export default function SpaDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {(isTherapist ? metrics.slice(0, 2) : isReceptionist ? metrics.filter((metric) => metric.label !== "Available therapists") : metrics).map((metric) => (
+        {(isTherapist ? allMetrics.slice(0, 2) : isReceptionist ? allMetrics.filter((metric) => metric.label !== "Available therapists") : allMetrics).map((metric) => (
           <div key={metric.label} className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
             <p className="text-sm text-gray-500 dark:text-gray-400">{metric.label}</p>
             <p className={`mt-3 text-2xl font-semibold ${metric.tone}`}>{metric.value}</p>
