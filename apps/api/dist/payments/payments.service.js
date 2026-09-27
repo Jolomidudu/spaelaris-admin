@@ -226,6 +226,9 @@ let PaymentsService = class PaymentsService {
         const payment = await this.prisma.payment.findUnique({ where: { id } });
         if (!payment)
             throw new common_1.NotFoundException('Payment was not found');
+        if (payment.method === client_1.PaymentMethod.PAYSTACK) {
+            throw new common_1.BadRequestException('Paystack payment statuses are updated only after provider verification');
+        }
         return this.prisma.payment.update({
             where: { id },
             data: {

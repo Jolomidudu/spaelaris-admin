@@ -242,6 +242,9 @@ export class PaymentsService {
   async update(id: string, status: PaymentStatus) {
     const payment = await this.prisma.payment.findUnique({ where: { id } });
     if (!payment) throw new NotFoundException('Payment was not found');
+    if (payment.method === PaymentMethod.PAYSTACK) {
+      throw new BadRequestException('Paystack payment statuses are updated only after provider verification');
+    }
 
     return this.prisma.payment.update({
       where: { id },

@@ -13,26 +13,26 @@ export declare class PaymentsService {
         status: import(".prisma/client").$Enums.PaymentStatus;
         amountKobo: number;
         appointment: {
+            id: string;
             startsAt: Date;
             endsAt: Date;
+            status: import(".prisma/client").$Enums.AppointmentStatus;
             location: {
                 name: string;
                 city: string;
             };
-            id: string;
+            therapist: {
+                firstName: string;
+                lastName: string;
+            } | null;
+            room: {
+                name: string;
+            } | null;
             services: {
                 name: string;
                 durationMinutes: number;
                 unitPriceKobo: number;
             }[];
-            status: import(".prisma/client").$Enums.AppointmentStatus;
-            room: {
-                name: string;
-            } | null;
-            therapist: {
-                firstName: string;
-                lastName: string;
-            } | null;
         };
     }>;
     initialize(data: {
@@ -55,39 +55,39 @@ export declare class PaymentsService {
     }): Promise<{
         id: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
+        method: import(".prisma/client").$Enums.PaymentMethod;
         reference: string;
         amountKobo: number;
-        method: import(".prisma/client").$Enums.PaymentMethod;
         paidAt: Date | null;
     }>;
     update(id: string, status: PaymentStatus): Promise<{
         id: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
+        method: import(".prisma/client").$Enums.PaymentMethod;
         reference: string;
         amountKobo: number;
-        method: import(".prisma/client").$Enums.PaymentMethod;
         paidAt: Date | null;
         refundedAt: Date | null;
     }>;
     list(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
-        createdAt: Date;
         status: import(".prisma/client").$Enums.PaymentStatus;
+        createdAt: Date;
         appointment: {
             startsAt: Date;
-            services: {
-                name: string;
-            }[];
             customer: {
                 firstName: string;
                 lastName: string;
                 phone: string;
             };
+            services: {
+                name: string;
+            }[];
         };
         appointmentId: string;
+        method: import(".prisma/client").$Enums.PaymentMethod;
         reference: string;
         amountKobo: number;
-        method: import(".prisma/client").$Enums.PaymentMethod;
         paidAt: Date | null;
     }[]>;
 }

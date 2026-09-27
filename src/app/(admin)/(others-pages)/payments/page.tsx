@@ -194,12 +194,18 @@ export default function PaymentsPage() {
                     <td className="px-5 py-4 text-sm font-medium text-gray-800 dark:text-white/90">{formatMoney(payment.amountKobo)}</td>
                     <td className="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">{payment.method.replace("_", " ")}</td>
                     <td className="px-5 py-4">
-                      <select value={payment.status} onChange={(event) => void updatePaymentStatus(payment.id, event.target.value)} className={`rounded-full border-0 px-2.5 py-1 text-xs font-medium ${statusClasses(payment.status)}`}>
-                        <option value="PENDING">PENDING</option>
-                        <option value="PAID">PAID</option>
-                        <option value="FAILED">FAILED</option>
-                        <option value="REFUNDED">REFUNDED</option>
-                      </select>
+                      {payment.method === "PAYSTACK" ? (
+                        <span title="Paystack status is updated after payment verification" className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusClasses(payment.status)}`}>
+                          {payment.status} · verified
+                        </span>
+                      ) : (
+                        <select value={payment.status} onChange={(event) => void updatePaymentStatus(payment.id, event.target.value)} className={`rounded-full border-0 px-2.5 py-1 text-xs font-medium ${statusClasses(payment.status)}`}>
+                          <option value="PENDING">PENDING</option>
+                          <option value="PAID">PAID</option>
+                          <option value="FAILED">FAILED</option>
+                          <option value="REFUNDED">REFUNDED</option>
+                        </select>
+                      )}
                     </td>
                   </tr>
                 ))}
