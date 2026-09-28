@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, Matches, Max, Min, MinLength, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, Matches, Max, Min, MinLength, ValidateNested } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Permission } from '../auth/permissions';
 import { PermissionsGuard } from '../auth/permissions.guard';
@@ -28,8 +28,10 @@ class CreateStaffDto {
   @MinLength(1)
   locationSlug!: string;
 
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ArrayUnique()
   @IsString({ each: true })
-  @IsIn(['deep-tissue-massage', 'glow-facial', 'aromatherapy'], { each: true })
   serviceSlugs!: string[];
 
   @IsOptional()
@@ -74,6 +76,14 @@ class UpdateStaffAvailabilityDto {
   availability!: StaffAvailabilityDayDto[];
 }
 
+class UpdateStaffServicesDto {
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ArrayUnique()
+  @IsString({ each: true })
+  serviceSlugs!: string[];
+}
+
 @Controller('staff')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions(Permission.ManageUsers)
@@ -98,5 +108,10 @@ export class StaffController {
   @Patch(':id/availability')
   updateAvailability(@Param('id') id: string, @Body() body: UpdateStaffAvailabilityDto) {
     return this.staffService.updateAvailability(id, body.availability);
+  }
+
+  @Patch(':id/services')
+  updateServices(@Param('id') id: string, @Body() body: UpdateStaffServicesDto) {
+    return this.staffService.updateServices(id, body.serviceSlugs);
   }
 }

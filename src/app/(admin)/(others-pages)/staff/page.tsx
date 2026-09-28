@@ -26,10 +26,14 @@ type StaffMember = {
   };
   services: {
     service: {
+      id: string;
       name: string;
+      slug: string;
     };
   }[];
 };
+
+type ServiceOption = { id: string; name: string; slug: string; category: { name: string } };
 
 type AvailabilityPeriod = {
   id?: string;
@@ -74,7 +78,14 @@ export default function StaffDirectoryPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [locationSlug, setLocationSlug] = useState("lagos");
-  const [serviceSlugs, setServiceSlugs] = useState<string[]>(["deep-tissue-massage"]);
+  const [serviceSlugs, setServiceSlugs] = useState<string[]>([]);
+  const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [serviceLoadError, setServiceLoadError] = useState("");
+  const [editingServices, setEditingServices] = useState<StaffMember | null>(null);
+  const [serviceAssignmentDraft, setServiceAssignmentDraft] = useState<string[]>([]);
+  const [serviceAssignmentError, setServiceAssignmentError] = useState("");
+  const [isSavingServices, setIsSavingServices] = useState(false);
   const [editingAvailability, setEditingAvailability] = useState<StaffMember | null>(null);
   const [availabilityDraft, setAvailabilityDraft] = useState<AvailabilityPeriod[]>([]);
   const [availabilityError, setAvailabilityError] = useState("");
@@ -87,23 +98,25 @@ export default function StaffDirectoryPage() {
       if (!token) {
         setError("Your session has expired. Please sign in again.");
         setIsLoading(false);
+        setIsLoadingServices(false);
         return;
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/staff`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!response.ok) {
-          throw new Error("Unable to load staff records.");
-        }
-
+        const headers = { Authorization: `Bearer ${token}` };
+        const [response, serviceResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/staff`, { headers }),
+          fetch(`${API_BASE_URL}/api/services`, { headers }),
+        ]);
+        if (!response.ok) throw new Error("Unable to load staff records.");
+        if (!serviceResponse.ok) throw new Error("Unable to load service options.");
         setStaffData((await response.json()) as StaffMember[]);
+        setServiceOptions((await serviceResponse.json()) as ServiceOption[]);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Unable to load staff records.");
       } finally {
         setIsLoading(false);
+        setIsLoadingServices(false);
       }
     }
 
@@ -114,6 +127,51 @@ export default function StaffDirectoryPage() {
     setServiceSlugs((current) => current.includes(serviceSlug)
       ? current.filter((value) => value !== serviceSlug)
       : [...current, serviceSlug]);
+  }
+
+  function openServiceEditor(staff: StaffMember) {
+    setEditingServices(staff);
+    setServiceAssignmentDraft(staff.services.map(({ service }) => service.slug));
+    setServiceAssignmentError("");
+  }
+
+  function toggleAssignedService(serviceSlug: string) {
+    setServiceAssignmentDraft((current) => current.includes(serviceSlug)
+      ? current.filter((slug) => slug !== serviceSlug)
+      : [...current, serviceSlug]);
+  }
+
+  async function saveServiceAssignments(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingServices) return;
+    const token = getAccessToken();
+    if (!token) {
+      setServiceAssignmentError("Your session has expired. Please sign in again.");
+      return;
+    }
+    setServiceAssignmentError("");
+    setIsSavingServices(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/staff/${editingServices.id}/services`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ serviceSlugs: serviceAssignmentDraft }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to update therapist services.");
+      }
+      const assigned = payload as { service: { id: string; name: string; slug: string } }[];
+      setStaffData((current) => current.map((staff) => staff.id === editingServices.id
+        ? { ...staff, services: assigned }
+        : staff,
+      ));
+      setEditingServices(null);
+    } catch (saveError) {
+      setServiceAssignmentError(saveError instanceof Error ? saveError.message : "Unable to update therapist services.");
+    } finally {
+      setIsSavingServices(false);
+    }
   }
 
   function openAvailabilityEditor(staff: StaffMember) {
@@ -199,7 +257,7 @@ export default function StaffDirectoryPage() {
       setEmail("");
       setPhone("");
       setLocationSlug("lagos");
-      setServiceSlugs(["deep-tissue-massage"]);
+      setServiceSlugs([]);
       setIsCreateOpen(false);
     } catch (submitError) {
       setCreateError(submitError instanceof Error ? submitError.message : "Unable to create staff member.");
@@ -269,7 +327,12 @@ export default function StaffDirectoryPage() {
                     </div>
                   </td>
                   <td className="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">{staff.location.name}<br />{staff.location.city}</td>
-                  <td className="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">{staff.services.map(({ service }) => service.name).join(", ") || "Not assigned"}</td>
+                  <td className="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">
+                    {staff.user.role === "THERAPIST" ? <div className="flex min-w-56 items-start justify-between gap-3">
+                      <span>{staff.services.map(({ service }) => service.name).join(", ") || "Not assigned"}</span>
+                      <button type="button" onClick={() => openServiceEditor(staff)} className="shrink-0 font-medium text-brand-500 hover:text-brand-600">Edit</button>
+                    </div> : staff.services.map(({ service }) => service.name).join(", ") || "Not assigned"}
+                  </td>
                   <td className="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">{staff.user.email}</td>
                   <td className="px-5 py-4 text-sm">
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusClasses(status)}`}>
@@ -319,20 +382,45 @@ export default function StaffDirectoryPage() {
               </div>
               <div>
                 <Label>Services</Label>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {[["deep-tissue-massage", "Deep Tissue Massage"], ["glow-facial", "Glow Facial"], ["aromatherapy", "Aromatherapy"]].map(([slug, name]) => (
-                    <label key={slug} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                      <input type="checkbox" checked={serviceSlugs.includes(slug)} onChange={() => toggleService(slug)} />{name}
-                    </label>
-                  ))}
-                </div>
+                {isLoadingServices ? <p className="text-sm text-gray-500">Loading active services...</p> : serviceLoadError ? <p role="alert" className="text-sm text-error-600">{serviceLoadError}</p> : <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                  {serviceOptions.map((service) => <label key={service.id} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <input type="checkbox" checked={serviceSlugs.includes(service.slug)} onChange={() => toggleService(service.slug)} />
+                    <span>{service.name}</span><span className="text-xs text-gray-400">{service.category.name}</span>
+                  </label>)}
+                </div>}
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                <Button type="submit" size="sm" disabled={isCreating || serviceSlugs.length === 0}>{isCreating ? "Creating..." : "Create staff member"}</Button>
+                <Button type="submit" size="sm" disabled={isCreating || serviceSlugs.length === 0 || isLoadingServices || Boolean(serviceLoadError)}>{isCreating ? "Creating..." : "Create staff member"}</Button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {editingServices && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="therapist-services-title">
+          <form onSubmit={saveServiceAssignments} className="max-h-full w-full max-w-2xl space-y-5 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="therapist-services-title" className="text-lg font-semibold text-gray-800 dark:text-white/90">Assigned treatments</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{editingServices.user.firstName} {editingServices.user.lastName} · {editingServices.location.name}</p>
+              </div>
+              <button type="button" onClick={() => setEditingServices(null)} className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Close</button>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300">Assign every treatment this therapist is qualified to provide. A therapist must be assigned all treatments in a multi-service booking.</p>
+            {serviceAssignmentError && <p role="alert" className="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">{serviceAssignmentError}</p>}
+            {isLoadingServices ? <p className="text-sm text-gray-500">Loading active services...</p> : serviceLoadError ? <p role="alert" className="text-sm text-error-600">{serviceLoadError}</p> : <div className="max-h-80 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+              {serviceOptions.map((service) => <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" checked={serviceAssignmentDraft.includes(service.slug)} onChange={() => toggleAssignedService(service.slug)} />
+                <span>{service.name}</span><span className="text-xs text-gray-400">{service.category.name}</span>
+              </label>)}
+            </div>}
+            <div className="flex justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditingServices(null)}>Cancel</Button>
+              <Button type="submit" size="sm" disabled={isSavingServices || isLoadingServices || Boolean(serviceLoadError)}>{isSavingServices ? "Saving..." : "Save assigned services"}</Button>
+            </div>
+          </form>
         </div>
       )}
 

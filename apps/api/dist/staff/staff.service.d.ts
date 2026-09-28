@@ -34,12 +34,25 @@ export declare class StaffService {
         startTime: string;
         endTime: string;
     }>): Promise<{
-        id: string;
-        startTime: string;
         dayOfWeek: number;
+        startTime: string;
         endTime: string;
+        id: string;
+    }[]>;
+    updateServices(staffProfileId: string, serviceSlugs: string[]): Promise<{
+        service: {
+            id: string;
+            name: string;
+            slug: string;
+        };
     }[]>;
     list(): import(".prisma/client").Prisma.PrismaPromise<{
+        availability: {
+            dayOfWeek: number;
+            startTime: string;
+            endTime: string;
+            id: string;
+        }[];
         id: string;
         bio: string | null;
         photoUrl: string | null;
@@ -62,13 +75,8 @@ export declare class StaffService {
             service: {
                 id: string;
                 name: string;
+                slug: string;
             };
-        }[];
-        availability: {
-            id: string;
-            startTime: string;
-            dayOfWeek: number;
-            endTime: string;
         }[];
     }[]>;
 }

@@ -49,8 +49,10 @@ __decorate([
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "locationSlug", void 0);
 __decorate([
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMaxSize)(100),
+    (0, class_validator_1.ArrayUnique)(),
     (0, class_validator_1.IsString)({ each: true }),
-    (0, class_validator_1.IsIn)(['deep-tissue-massage', 'glow-facial', 'aromatherapy'], { each: true }),
     __metadata("design:type", Array)
 ], CreateStaffDto.prototype, "serviceSlugs", void 0);
 __decorate([
@@ -102,6 +104,15 @@ __decorate([
     (0, class_transformer_1.Type)(() => StaffAvailabilityDayDto),
     __metadata("design:type", Array)
 ], UpdateStaffAvailabilityDto.prototype, "availability", void 0);
+class UpdateStaffServicesDto {
+}
+__decorate([
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMaxSize)(100),
+    (0, class_validator_1.ArrayUnique)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], UpdateStaffServicesDto.prototype, "serviceSlugs", void 0);
 let StaffController = class StaffController {
     constructor(staffService) {
         this.staffService = staffService;
@@ -117,6 +128,9 @@ let StaffController = class StaffController {
     }
     updateAvailability(id, body) {
         return this.staffService.updateAvailability(id, body.availability);
+    }
+    updateServices(id, body) {
+        return this.staffService.updateServices(id, body.serviceSlugs);
     }
 };
 exports.StaffController = StaffController;
@@ -149,6 +163,14 @@ __decorate([
     __metadata("design:paramtypes", [String, UpdateStaffAvailabilityDto]),
     __metadata("design:returntype", void 0)
 ], StaffController.prototype, "updateAvailability", null);
+__decorate([
+    (0, common_1.Patch)(':id/services'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateStaffServicesDto]),
+    __metadata("design:returntype", void 0)
+], StaffController.prototype, "updateServices", null);
 exports.StaffController = StaffController = __decorate([
     (0, common_1.Controller)('staff'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),

@@ -123,6 +123,44 @@ export class StaffService {
     });
   }
 
+  async updateServices(staffProfileId: string, serviceSlugs: string[]) {
+    const profile = await this.prisma.staffProfile.findUnique({
+      where: { id: staffProfileId },
+      select: { id: true, user: { select: { role: true } } },
+    });
+    if (!profile || profile.user.role !== UserRole.THERAPIST) {
+      throw new BadRequestException('Therapist profile was not found');
+    }
+
+    const services = await this.prisma.service.findMany({
+      where: {
+        slug: { in: serviceSlugs },
+        isActive: true,
+        category: { isActive: true },
+      },
+      select: { id: true, name: true, slug: true },
+    });
+    if (services.length !== serviceSlugs.length) {
+      throw new BadRequestException('One or more selected services are unavailable');
+    }
+
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.therapistService.deleteMany({ where: { staffProfileId } });
+      if (services.length > 0) {
+        await transaction.therapistService.createMany({
+          data: services.map(({ id }) => ({ staffProfileId, serviceId: id })),
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    return this.prisma.therapistService.findMany({
+      where: { staffProfileId },
+      orderBy: { service: { name: 'asc' } },
+      select: { service: { select: { id: true, name: true, slug: true } } },
+    });
+  }
+
   list() {
     return this.prisma.staffProfile.findMany({
       where: {
@@ -167,6 +205,7 @@ export class StaffService {
               select: {
                 id: true,
                 name: true,
+                slug: true,
               },
             },
           },
