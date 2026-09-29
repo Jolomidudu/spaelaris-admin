@@ -17,6 +17,9 @@ export class StaffService {
     role?: UserRole;
     initialPassword?: string;
   }) {
+    if (data.serviceSlugs.length > 4) {
+      throw new BadRequestException('A therapist can be assigned a maximum of four services');
+    }
     const location = await this.prisma.location.findUnique({ where: { slug: data.locationSlug } });
     if (!location) {
       throw new BadRequestException('Location not found');
@@ -124,6 +127,9 @@ export class StaffService {
   }
 
   async updateServices(staffProfileId: string, serviceSlugs: string[]) {
+    if (serviceSlugs.length > 4) {
+      throw new BadRequestException('A therapist can be assigned a maximum of four services');
+    }
     const profile = await this.prisma.staffProfile.findUnique({
       where: { id: staffProfileId },
       select: { id: true, user: { select: { role: true } } },

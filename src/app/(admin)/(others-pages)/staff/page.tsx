@@ -33,7 +33,8 @@ type StaffMember = {
   }[];
 };
 
-type ServiceOption = { id: string; name: string; slug: string; category: { name: string } };
+type ServiceOption = { id: string; name: string; slug: string; category: { id: string; name: string; slug: string } };
+type ServiceCategoryOption = { id: string; name: string; slug: string };
 
 type AvailabilityPeriod = {
   id?: string;
@@ -80,10 +81,15 @@ export default function StaffDirectoryPage() {
   const [locationSlug, setLocationSlug] = useState("lagos");
   const [serviceSlugs, setServiceSlugs] = useState<string[]>([]);
   const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategoryOption[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [serviceLoadError, setServiceLoadError] = useState("");
   const [editingServices, setEditingServices] = useState<StaffMember | null>(null);
   const [serviceAssignmentDraft, setServiceAssignmentDraft] = useState<string[]>([]);
+  const [assignmentCategorySlug, setAssignmentCategorySlug] = useState("");
+  const [createCategorySlug, setCreateCategorySlug] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [serviceAssignmentError, setServiceAssignmentError] = useState("");
   const [isSavingServices, setIsSavingServices] = useState(false);
   const [editingAvailability, setEditingAvailability] = useState<StaffMember | null>(null);
@@ -104,14 +110,23 @@ export default function StaffDirectoryPage() {
 
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [response, serviceResponse] = await Promise.all([
+        const [response, serviceResponse, categoryResponse] = await Promise.all([
           fetch(`${API_BASE_URL}/api/staff`, { headers }),
           fetch(`${API_BASE_URL}/api/services`, { headers }),
+          fetch(`${API_BASE_URL}/api/services/categories`, { headers }),
         ]);
         if (!response.ok) throw new Error("Unable to load staff records.");
         if (!serviceResponse.ok) throw new Error("Unable to load service options.");
-        setStaffData((await response.json()) as StaffMember[]);
-        setServiceOptions((await serviceResponse.json()) as ServiceOption[]);
+        if (!categoryResponse.ok) throw new Error("Unable to load service categories.");
+        const nextStaff = (await response.json()) as StaffMember[];
+        const nextServices = (await serviceResponse.json()) as ServiceOption[];
+        const nextCategories = (await categoryResponse.json()) as ServiceCategoryOption[];
+        setStaffData(nextStaff);
+        setServiceOptions(nextServices);
+        setServiceCategories(nextCategories);
+        if (!createCategorySlug && nextCategories[0]?.slug) {
+          setCreateCategorySlug(nextCategories[0].slug);
+        }
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Unable to load staff records.");
       } finally {
@@ -123,22 +138,77 @@ export default function StaffDirectoryPage() {
     void loadStaff();
   }, []);
 
+  async function createServiceCategory(targetSlugSetter: (slug: string) => void, name: string, errorSetter: (message: string) => void) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      errorSetter("Category name is required.");
+      return;
+    }
+
+    const token = getAccessToken();
+    if (!token) {
+      errorSetter("Your session has expired. Please sign in again.");
+      return;
+    }
+
+    setIsCreatingCategory(true);
+    errorSetter("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/services/categories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message || "Unable to create category.");
+      }
+
+      const nextCategory = payload as ServiceCategoryOption;
+      setServiceCategories((current) => {
+        const exists = current.some((category) => category.id === nextCategory.id);
+        return exists ? current : [...current, nextCategory];
+      });
+      targetSlugSetter(nextCategory.slug);
+      setNewCategoryName("");
+    } catch (categoryError) {
+      errorSetter(categoryError instanceof Error ? categoryError.message : "Unable to create category.");
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  }
+
   function toggleService(serviceSlug: string) {
-    setServiceSlugs((current) => current.includes(serviceSlug)
-      ? current.filter((value) => value !== serviceSlug)
-      : [...current, serviceSlug]);
+    setServiceSlugs((current) => {
+      if (current.includes(serviceSlug)) return current.filter((value) => value !== serviceSlug);
+      if (current.length >= 4) {
+        setCreateError("Choose no more than four services for a therapist.");
+        return current;
+      }
+      setCreateError("");
+      return [...current, serviceSlug];
+    });
   }
 
   function openServiceEditor(staff: StaffMember) {
     setEditingServices(staff);
     setServiceAssignmentDraft(staff.services.map(({ service }) => service.slug));
+    const firstAssignedCategory = serviceOptions.find((service) => staff.services.some(({ service: assigned }) => assigned.slug === service.slug))?.category.slug;
+    setAssignmentCategorySlug(firstAssignedCategory ?? serviceCategories[0]?.slug ?? "");
     setServiceAssignmentError("");
   }
 
   function toggleAssignedService(serviceSlug: string) {
-    setServiceAssignmentDraft((current) => current.includes(serviceSlug)
-      ? current.filter((slug) => slug !== serviceSlug)
-      : [...current, serviceSlug]);
+    setServiceAssignmentDraft((current) => {
+      if (current.includes(serviceSlug)) return current.filter((slug) => slug !== serviceSlug);
+      if (current.length >= 4) {
+        setServiceAssignmentError("Choose no more than four services for a therapist.");
+        return current;
+      }
+      setServiceAssignmentError("");
+      return [...current, serviceSlug];
+    });
   }
 
   async function saveServiceAssignments(event: React.FormEvent<HTMLFormElement>) {
@@ -258,6 +328,7 @@ export default function StaffDirectoryPage() {
       setPhone("");
       setLocationSlug("lagos");
       setServiceSlugs([]);
+      setCreateCategorySlug(serviceCategories[0]?.slug ?? "");
       setIsCreateOpen(false);
     } catch (submitError) {
       setCreateError(submitError instanceof Error ? submitError.message : "Unable to create staff member.");
@@ -269,6 +340,8 @@ export default function StaffDirectoryPage() {
   const therapists = staffData.filter((staff) => staff.user.role === "THERAPIST");
   const bookableCount = therapists.filter((staff) => staff.isBookable).length;
   const unscheduledCount = therapists.filter((staff) => staff.availability.length === 0).length;
+  const createCategoryServices = serviceOptions.filter((service) => service.category.slug === createCategorySlug);
+  const assignmentCategoryServices = serviceOptions.filter((service) => service.category.slug === assignmentCategorySlug);
 
   return (
     <div className="space-y-6">
@@ -295,7 +368,12 @@ export default function StaffDirectoryPage() {
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">Team directory</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">Therapist specialties and booking eligibility</p>
           </div>
-          <button type="button" onClick={() => { setCreateError(""); setIsCreateOpen(true); }} className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">Add staff member</button>
+          <button type="button" onClick={() => {
+            setCreateError("");
+            setCreateCategorySlug(serviceCategories[0]?.slug ?? "");
+            setServiceSlugs([]);
+            setIsCreateOpen(true);
+          }} className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">Add staff member</button>
         </div>
 
         {error && <p className="px-5 py-4 text-sm text-error-600 dark:text-error-400">{error}</p>}
@@ -380,17 +458,33 @@ export default function StaffDirectoryPage() {
                   <option value="abuja">Spaelaris Abuja</option>
                 </select>
               </div>
-              <div>
-                <Label>Services</Label>
-                {isLoadingServices ? <p className="text-sm text-gray-500">Loading active services...</p> : serviceLoadError ? <p role="alert" className="text-sm text-error-600">{serviceLoadError}</p> : <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                  {serviceOptions.map((service) => <label key={service.id} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                    <input type="checkbox" checked={serviceSlugs.includes(service.slug)} onChange={() => toggleService(service.slug)} />
-                    <span>{service.name}</span><span className="text-xs text-gray-400">{service.category.name}</span>
-                  </label>)}
-                </div>}
+              <div className="space-y-3">
+                <div>
+                  <Label>Service category</Label>
+                  <div className="flex gap-2">
+                    <select value={createCategorySlug} onChange={(event) => setCreateCategorySlug(event.target.value)} className="h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                      {serviceCategories.length === 0 ? <option value="">No categories available</option> : serviceCategories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
+                    </select>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void createServiceCategory(setCreateCategorySlug, newCategoryName, setCreateError)} disabled={!newCategoryName.trim() || isCreatingCategory}>Add</Button>
+                  </div>
+                </div>
+                <div>
+                  <Label>New category</Label>
+                  <Input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="Massage, Facials, etc." />
+                </div>
+                <div>
+                  <Label>Services in {serviceCategories.find((category) => category.slug === createCategorySlug)?.name ?? "selected category"}</Label>
+                  {isLoadingServices ? <p className="text-sm text-gray-500">Loading active services...</p> : serviceLoadError ? <p role="alert" className="text-sm text-error-600">{serviceLoadError}</p> : <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                    {createCategoryServices.length === 0 ? <p className="text-sm text-gray-500">No services found for this category yet.</p> : createCategoryServices.map((service) => <label key={service.id} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                      <input type="checkbox" checked={serviceSlugs.includes(service.slug)} onChange={() => toggleService(service.slug)} />
+                      <span>{service.name}</span>
+                    </label>)}
+                  </div>}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Selected services: {serviceSlugs.length}/4</p>
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => { setIsCreateOpen(false); setServiceSlugs([]); setCreateCategorySlug(serviceCategories[0]?.slug ?? ""); }}>Cancel</Button>
                 <Button type="submit" size="sm" disabled={isCreating || serviceSlugs.length === 0 || isLoadingServices || Boolean(serviceLoadError)}>{isCreating ? "Creating..." : "Create staff member"}</Button>
               </div>
             </form>
@@ -410,12 +504,28 @@ export default function StaffDirectoryPage() {
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300">Assign every treatment this therapist is qualified to provide. A therapist must be assigned all treatments in a multi-service booking.</p>
             {serviceAssignmentError && <p role="alert" className="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">{serviceAssignmentError}</p>}
-            {isLoadingServices ? <p className="text-sm text-gray-500">Loading active services...</p> : serviceLoadError ? <p role="alert" className="text-sm text-error-600">{serviceLoadError}</p> : <div className="max-h-80 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-              {serviceOptions.map((service) => <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" checked={serviceAssignmentDraft.includes(service.slug)} onChange={() => toggleAssignedService(service.slug)} />
-                <span>{service.name}</span><span className="text-xs text-gray-400">{service.category.name}</span>
-              </label>)}
-            </div>}
+            <div className="space-y-3">
+              <div>
+                <Label>Service category</Label>
+                <div className="flex gap-2">
+                  <select value={assignmentCategorySlug} onChange={(event) => setAssignmentCategorySlug(event.target.value)} className="h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                    {serviceCategories.length === 0 ? <option value="">No categories available</option> : serviceCategories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
+                  </select>
+                  <Button type="button" variant="outline" size="sm" onClick={() => void createServiceCategory(setAssignmentCategorySlug, newCategoryName, setServiceAssignmentError)} disabled={!newCategoryName.trim() || isCreatingCategory}>Add</Button>
+                </div>
+              </div>
+              <div>
+                <Label>New category</Label>
+                <Input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="Massage, Facials, etc." />
+              </div>
+              {isLoadingServices ? <p className="text-sm text-gray-500">Loading active services...</p> : serviceLoadError ? <p role="alert" className="text-sm text-error-600">{serviceLoadError}</p> : <div className="max-h-80 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                {assignmentCategoryServices.length === 0 ? <p className="text-sm text-gray-500">No services found for this category yet.</p> : assignmentCategoryServices.map((service) => <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" checked={serviceAssignmentDraft.includes(service.slug)} onChange={() => toggleAssignedService(service.slug)} />
+                  <span>{service.name}</span>
+                </label>)}
+              </div>}
+              <p className="text-xs text-gray-500 dark:text-gray-400">Selected services: {serviceAssignmentDraft.length}/4</p>
+            </div>
             <div className="flex justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
               <Button type="button" variant="outline" size="sm" onClick={() => setEditingServices(null)}>Cancel</Button>
               <Button type="submit" size="sm" disabled={isSavingServices || isLoadingServices || Boolean(serviceLoadError)}>{isSavingServices ? "Saving..." : "Save assigned services"}</Button>

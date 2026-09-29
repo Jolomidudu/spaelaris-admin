@@ -29,7 +29,7 @@ class CreateStaffDto {
   locationSlug!: string;
 
   @IsArray()
-  @ArrayMaxSize(100)
+  @ArrayMaxSize(4)
   @ArrayUnique()
   @IsString({ each: true })
   serviceSlugs!: string[];
@@ -78,7 +78,7 @@ class UpdateStaffAvailabilityDto {
 
 class UpdateStaffServicesDto {
   @IsArray()
-  @ArrayMaxSize(100)
+  @ArrayMaxSize(4)
   @ArrayUnique()
   @IsString({ each: true })
   serviceSlugs!: string[];
