@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayUnique, IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, Matches, Max, Min, MinLength, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Permission } from '../auth/permissions';
 import { PermissionsGuard } from '../auth/permissions.guard';
@@ -23,6 +23,15 @@ class CreateStaffDto {
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsString()
+  displayTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(68000)
+  photoUrl?: string;
 
   @IsString()
   @MinLength(1)
@@ -84,6 +93,39 @@ class UpdateStaffServicesDto {
   serviceSlugs!: string[];
 }
 
+class UpdateStaffPhotoDto {
+  @IsString()
+  @MaxLength(68000)
+  photoUrl!: string;
+}
+
+class UpdateStaffProfileDto {
+  @IsString()
+  @MinLength(1)
+  firstName!: string;
+
+  @IsString()
+  @MinLength(1)
+  lastName!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string | null;
+
+  @IsString()
+  locationSlug!: string;
+
+  @IsIn([UserRole.MANAGER, UserRole.RECEPTIONIST, UserRole.THERAPIST])
+  role!: UserRole;
+
+  @IsString()
+  @MinLength(1)
+  displayTitle!: string;
+}
+
 @Controller('staff')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions(Permission.ManageUsers)
@@ -113,5 +155,20 @@ export class StaffController {
   @Patch(':id/services')
   updateServices(@Param('id') id: string, @Body() body: UpdateStaffServicesDto) {
     return this.staffService.updateServices(id, body.serviceSlugs);
+  }
+
+  @Patch(':id/photo')
+  updatePhoto(@Param('id') id: string, @Body() body: UpdateStaffPhotoDto) {
+    return this.staffService.updatePhoto(id, body.photoUrl);
+  }
+
+  @Patch(':id/profile')
+  updateProfile(@Param('id') id: string, @Body() body: UpdateStaffProfileDto) {
+    return this.staffService.updateProfile(id, body);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.staffService.remove(id);
   }
 }

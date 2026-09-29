@@ -12,6 +12,8 @@ export class StaffService {
     lastName: string;
     email: string;
     phone?: string;
+    displayTitle?: string;
+    photoUrl?: string;
     locationSlug: string;
     serviceSlugs: string[];
     role?: UserRole;
@@ -35,7 +37,8 @@ export class StaffService {
     }
 
     const role = data.role ?? UserRole.THERAPIST;
-    if (role !== UserRole.THERAPIST && !data.initialPassword) {
+    const passwordlessSubCoreTitle = role === UserRole.RECEPTIONIST && ['Cleaner', 'Security', 'Maintenance', 'Spa-Attendant'].includes(data.displayTitle ?? '');
+    if (role !== UserRole.THERAPIST && !passwordlessSubCoreTitle && !data.initialPassword) {
       throw new BadRequestException('An initial password is required for admin staff accounts');
     }
 
@@ -58,6 +61,8 @@ export class StaffService {
         staffProfile: {
           create: {
             locationId: location.id,
+            displayTitle: data.displayTitle?.trim() || undefined,
+            photoUrl: data.photoUrl || undefined,
             services: {
               create: services.map((service) => ({ serviceId: service.id })),
             },
@@ -167,6 +172,69 @@ export class StaffService {
     });
   }
 
+  updatePhoto(staffProfileId: string, photoUrl: string) {
+    return this.prisma.staffProfile.update({
+      where: { id: staffProfileId },
+      data: { photoUrl },
+      select: { id: true, photoUrl: true },
+    });
+  }
+
+  async updateProfile(staffProfileId: string, data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string | null;
+    locationSlug: string;
+    role: UserRole;
+    displayTitle: string;
+  }) {
+    const profile = await this.prisma.staffProfile.findUnique({
+      where: { id: staffProfileId },
+      select: { userId: true },
+    });
+    if (!profile) throw new BadRequestException('Staff profile was not found');
+
+    const location = await this.prisma.location.findUnique({ where: { slug: data.locationSlug } });
+    if (!location) throw new BadRequestException('Location not found');
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: profile.userId },
+        data: {
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
+          email: data.email.trim().toLowerCase(),
+          phone: data.phone?.trim() || null,
+          role: data.role,
+        },
+      }),
+      this.prisma.staffProfile.update({
+        where: { id: staffProfileId },
+        data: { locationId: location.id, displayTitle: data.displayTitle.trim() },
+      }),
+    ]);
+
+    return this.prisma.staffProfile.findUnique({
+      where: { id: staffProfileId },
+      select: { id: true, displayTitle: true, user: { select: { id: true, role: true } } },
+    });
+  }
+
+  async remove(staffProfileId: string) {
+    const profile = await this.prisma.staffProfile.findUnique({
+      where: { id: staffProfileId },
+      select: { userId: true },
+    });
+    if (!profile) throw new BadRequestException('Staff profile was not found');
+
+    return this.prisma.user.update({
+      where: { id: profile.userId },
+      data: { status: 'SUSPENDED' },
+      select: { id: true, status: true },
+    });
+  }
+
   list() {
     return this.prisma.staffProfile.findMany({
       where: {
@@ -181,6 +249,7 @@ export class StaffService {
       select: {
         id: true,
         bio: true,
+        displayTitle: true,
         photoUrl: true,
         isBookable: true,
         availability: {
