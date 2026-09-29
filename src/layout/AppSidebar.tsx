@@ -1,10 +1,10 @@
 "use client";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
-import { getStoredAuth, normalizeRole } from "../lib/auth";
+import { getStoredRoleSnapshot, subscribeToAuthChanges } from "../lib/auth";
 import {
   BoxCubeIcon,
   CalenderIcon,
@@ -89,7 +89,7 @@ const othersItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, setIsMobileOpen } = useSidebar();
   const pathname = usePathname();
-  const [role, setRole] = useState("OWNER");
+  const role = useSyncExternalStore(subscribeToAuthChanges, getStoredRoleSnapshot, () => "OWNER");
 
   const closeSidebarOnMobile = () => {
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
@@ -97,11 +97,7 @@ const AppSidebar: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    setRole(normalizeRole(getStoredAuth()?.user.role) || "OWNER");
-  }, []);
-
-  const normalizedRole = normalizeRole(role);
+  const normalizedRole = role;
 
   const visibleNavItems = useMemo(() => {
     if (normalizedRole === "OWNER") return navItems;
@@ -109,7 +105,7 @@ const AppSidebar: React.FC = () => {
       return navItems.filter((item) => item.name !== "Staff & Therapists");
     }
     if (normalizedRole === "RECEPTIONIST") {
-      return navItems.filter((item) => ["Dashboard", "Appointments", "Customers"].includes(item.name));
+      return navItems.filter((item) => ["Overview", "Appointments", "Customers"].includes(item.name));
     }
     return navItems.filter((item) => ["Dashboard"].includes(item.name));
   }, [normalizedRole]);
@@ -217,7 +213,7 @@ const AppSidebar: React.FC = () => {
                     : "justify-start"
                 }`}
               >
-                {isExpanded || isHovered || isMobileOpen ? "Others" : <HorizontaLDots />}
+                {isExpanded || isHovered || isMobileOpen ? normalizedRole === "RECEPTIONIST" ? "Front desk" : "Others" : <HorizontaLDots />}
               </h2>
               {renderMenuItems(visibleOtherItems)}
             </div>

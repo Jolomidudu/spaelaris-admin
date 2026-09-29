@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -39,6 +39,53 @@ type Appointment = {
   services: { name: string; durationMinutes: number; quantity: number }[];
 };
 
+type AppointmentOptions = {
+  locations: { id: string; name: string; slug: string }[];
+  categories: { id: string; name: string; slug: string }[];
+  services: { id: string; name: string; slug: string; durationMinutes: number | null; priceKobo: number; category: { id: string; name: string; slug: string } }[];
+  therapists: { id: string; staffProfileId: string; email: string; firstName: string; lastName: string; locationSlug: string; serviceSlugs: string[] }[];
+  rooms: { id: string; name: string; locationSlug: string }[];
+};
+
+type AppointmentSlot = {
+  startsAt: string;
+  endsAt: string;
+  therapistId: string;
+  therapistName: string;
+  availableRooms: { id: string; name: string }[];
+};
+
+const ANY_ROOM_VALUE = "__any_room__";
+
+function getDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Lagos",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function formatBookingTime(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Lagos",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(value));
+}
+
+function formatBookingDate(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Lagos",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(`${value}T12:00:00+01:00`));
+}
+
 function getCalendarLevel(status: string) {
   if (status === "CANCELLED" || status === "NO_SHOW") return "Danger";
   if (status === "PENDING") return "Warning";
@@ -71,17 +118,29 @@ function toCalendarEvent(appointment: Appointment): CalendarEvent {
 
 const Calendar: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [eventTitle, setEventTitle] = useState("");
-  const [eventCustomer, setEventCustomer] = useState("");
+  const [customerFirstName, setCustomerFirstName] = useState("");
+  const [customerLastName, setCustomerLastName] = useState("");
+  const [customerPhoneDigits, setCustomerPhoneDigits] = useState("");
+  const [customerNote, setCustomerNote] = useState("");
   const [eventService, setEventService] = useState("");
+  const [eventServiceCategory, setEventServiceCategory] = useState("");
   const [eventTherapist, setEventTherapist] = useState("");
   const [eventRoom, setEventRoom] = useState("");
-  const [eventLocation, setEventLocation] = useState("lagos");
-  const [eventStatus, setEventStatus] = useState("Confirmed");
+  const [eventLocation, setEventLocation] = useState("");
   const [eventStartDate, setEventStartDate] = useState("");
   const [eventEndDate, setEventEndDate] = useState("");
-  const [eventLevel, setEventLevel] = useState("Success");
+  const [bookingStep, setBookingStep] = useState(1);
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Lagos" }));
+  const [availableSlots, setAvailableSlots] = useState<AppointmentSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<AppointmentSlot | null>(null);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [slotError, setSlotError] = useState("");
+  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  const [confirmedBooking, setConfirmedBooking] = useState<{ customer: string; phone: string; category: string; service: string; amount: string; note: string; location: string; therapist: string; room: string; date: string; time: string } | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [appointmentOptions, setAppointmentOptions] = useState<AppointmentOptions>({ locations: [], categories: [], services: [], therapists: [], rooms: [] });
+  const [isLoadingOptions, setIsLoadingOptions] = useState(true);
+  const [optionsError, setOptionsError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -118,15 +177,77 @@ const Calendar: React.FC = () => {
     void loadAppointments();
   }, []);
 
-  const calendarsEvents = useMemo(
-    () => ({
-      Danger: "danger",
-      Success: "success",
-      Primary: "primary",
-      Warning: "warning",
-    }),
-    []
-  );
+  React.useEffect(() => {
+    async function loadAppointmentOptions() {
+      const token = getAccessToken();
+      if (!token) {
+        setOptionsError("Your session has expired. Please sign in again.");
+        setIsLoadingOptions(false);
+        return;
+      }
+
+      try {
+        let options: AppointmentOptions;
+        const response = await fetch(`${API_BASE_URL}/api/appointments/options`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (response.ok) {
+          options = await response.json() as AppointmentOptions;
+          const roomResponse = await fetch(`${API_BASE_URL}/api/rooms`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => null);
+          if (roomResponse?.ok) {
+            const roomPayload = await roomResponse.json() as unknown;
+            const actualRooms = Array.isArray(roomPayload) ? roomPayload.flatMap((room: { id?: string; name?: string; location?: { slug?: string }; locationSlug?: string }) => {
+              const locationSlug = room.location?.slug ?? room.locationSlug;
+              return room.id && room.name && locationSlug ? [{ id: room.id, name: room.name, locationSlug }] : [];
+            }) : [];
+            if (actualRooms.length > 0) options.rooms = actualRooms;
+          }
+          if (!Array.isArray(options.rooms)) options.rooms = [];
+        } else {
+          const [locationResponse, catalogResponse, therapistResponse, roomResponse] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/public/locations`),
+            fetch(`${API_BASE_URL}/api/public/catalog`),
+            fetch(`${API_BASE_URL}/api/public/therapists`),
+            fetch(`${API_BASE_URL}/api/rooms`, { headers: { Authorization: `Bearer ${token}` } }),
+          ]);
+          const [locations, catalog, publicTherapists] = await Promise.all([
+            locationResponse.json(),
+            catalogResponse.json(),
+            therapistResponse.json(),
+          ]);
+          if (!locationResponse.ok || !catalogResponse.ok || !therapistResponse.ok) {
+            throw new Error("Booking lists are unavailable. The API needs the latest appointments update.");
+          }
+          const roomRows = roomResponse.ok ? await roomResponse.json() : [];
+          options = {
+            locations,
+            categories: catalog.map(({ id, name, slug }: { id: string; name: string; slug: string }) => ({ id, name, slug })),
+            services: catalog.flatMap((category: { id: string; name: string; slug: string; services: { id: string; name: string; slug: string; durationMinutes: number | null; priceKobo: number }[] }) =>
+              category.services.map((service) => ({ ...service, category: { id: category.id, name: category.name, slug: category.slug } })),
+            ),
+            therapists: publicTherapists.map((therapist: { id: string; publicSlug: string; name: string; location: { slug: string }; services: { slug: string }[] }) => {
+              const [firstName, ...lastNameParts] = therapist.name.split(" ");
+              return { id: therapist.id, staffProfileId: therapist.id, email: "", firstName, lastName: lastNameParts.join(" "), locationSlug: therapist.location.slug, serviceSlugs: therapist.services.map(({ slug }) => slug) };
+            }),
+            rooms: roomRows.length > 0
+              ? roomRows.map((room: { id: string; name: string; location: { slug: string } }) => ({ id: room.id, name: room.name, locationSlug: room.location.slug }))
+              : locations.flatMap((location: { rooms?: { id: string; name: string }[]; slug: string }) => (location.rooms ?? []).map((room) => ({ ...room, locationSlug: location.slug }))),
+          };
+        }
+        setAppointmentOptions(options);
+        setEventLocation(options.locations[0]?.slug ?? "");
+        setEventServiceCategory(options.categories[0]?.slug ?? "");
+      } catch (error) {
+        setOptionsError(error instanceof Error ? error.message : "Unable to load booking options.");
+      } finally {
+        setIsLoadingOptions(false);
+      }
+    }
+
+    void loadAppointmentOptions();
+  }, []);
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     resetModalFields();
@@ -151,23 +272,23 @@ const Calendar: React.FC = () => {
 
   const handleEventClick = (clickInfo: EventClickArg) => {
     const event = clickInfo.event as unknown as CalendarEvent;
+    resetModalFields();
     setSelectedEvent(event);
-    setEventTitle(event.title || "");
-    setEventCustomer(event.extendedProps.customer || "");
-    setEventService(event.extendedProps.service || "");
-    setEventTherapist(event.extendedProps.therapist || "");
-    setEventRoom(event.extendedProps.room || "");
-    setEventLocation("lagos");
-    setEventStatus(event.extendedProps.status || "Confirmed");
     setEventStartDate(formatDateInput(event.start as string | Date | null | undefined));
     setEventEndDate(formatDateInput(event.end as string | Date | null | undefined));
-    setEventLevel(event.extendedProps.calendar || "Success");
+    openModal();
+  };
+
+  const handleNewAppointment = () => {
+    resetModalFields();
+    setSaveError("");
     openModal();
   };
 
   const handleAddOrUpdateEvent = async () => {
-    const normalizedStart = eventStartDate || new Date().toISOString().slice(0, 16);
-    const normalizedEnd = eventEndDate || normalizedStart;
+    const normalizedStart = selectedSlot ? selectedSlot.startsAt : eventStartDate || new Date().toISOString().slice(0, 16);
+    const normalizedEnd = selectedSlot ? selectedSlot.endsAt : eventEndDate || normalizedStart;
+    let confirmation: typeof confirmedBooking = null;
 
     const token = getAccessToken();
     if (!token) {
@@ -189,7 +310,6 @@ const Calendar: React.FC = () => {
           body: JSON.stringify({
             startsAt: normalizedStart,
             endsAt: normalizedEnd,
-            status: eventStatus.toUpperCase().replace(/ /g, "_"),
           }),
         });
         const payload = await response.json();
@@ -204,14 +324,16 @@ const Calendar: React.FC = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            customerPhone: eventCustomer,
+            customerPhone: customerPhoneDigits,
+            customerFirstName,
+            customerLastName,
+            customerNote: customerNote.trim() || undefined,
             serviceSlug: eventService,
             locationSlug: eventLocation,
-            therapistEmail: eventTherapist || undefined,
-            roomName: eventRoom || undefined,
+            therapistProfileId: eventTherapist || undefined,
+            roomName: selectedRoom?.name || undefined,
             startsAt: normalizedStart,
             endsAt: normalizedEnd,
-            status: eventStatus.toUpperCase().replace(/ /g, "_"),
           }),
         });
         const payload = await response.json();
@@ -226,6 +348,21 @@ const Calendar: React.FC = () => {
       if (!refreshResponse.ok) throw new Error("Appointment was saved, but the calendar could not refresh.");
       const appointments = (await refreshResponse.json()) as Appointment[];
       setEvents(appointments.map(toCalendarEvent));
+      if (!selectedEvent && selectedSlot) {
+        confirmation = {
+          customer: `${customerFirstName.trim()} ${customerLastName.trim()}`,
+          phone: `+234 ${customerPhoneDigits}`,
+          category: appointmentOptions.categories.find((category) => category.slug === eventServiceCategory)?.name ?? "",
+          service: selectedService?.name ?? "",
+          amount: new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalPrice / 100),
+          note: customerNote.trim(),
+          location: appointmentOptions.locations.find((location) => location.slug === eventLocation)?.name ?? "",
+          therapist: selectedTherapist ? `${selectedTherapist.firstName} ${selectedTherapist.lastName}` : "",
+          room: selectedRoom?.name ?? "",
+          date: formatBookingDate(selectedDate),
+          time: formatBookingTime(selectedSlot.startsAt),
+        };
+      }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Unable to save appointment.");
       return;
@@ -235,21 +372,100 @@ const Calendar: React.FC = () => {
 
     closeModal();
     resetModalFields();
+    if (confirmation) {
+      setConfirmedBooking(confirmation);
+      setIsConfirmationOpen(true);
+    }
   };
 
   const resetModalFields = () => {
-    setEventTitle("");
-    setEventCustomer("");
+    setCustomerFirstName("");
+    setCustomerLastName("");
+    setCustomerPhoneDigits("");
+    setCustomerNote("");
     setEventService("");
+    setEventServiceCategory(appointmentOptions.categories[0]?.slug ?? "");
     setEventTherapist("");
     setEventRoom("");
-    setEventLocation("lagos");
-    setEventStatus("Confirmed");
+    setEventLocation(appointmentOptions.locations[0]?.slug ?? "");
     setEventStartDate("");
     setEventEndDate("");
-    setEventLevel("Success");
+    setBookingStep(1);
+    setSelectedDate(getDateKey(new Date()));
+    setAvailableSlots([]);
+    setSelectedSlot(null);
+    setSlotError("");
     setSelectedEvent(null);
   };
+
+  const availableServices = appointmentOptions.services.filter((service) => service.category.slug === eventServiceCategory);
+  const availableTherapists = appointmentOptions.therapists.filter((therapist) =>
+    therapist.locationSlug === eventLocation && (!eventService || therapist.serviceSlugs.includes(eventService)),
+  );
+  const availableRooms = appointmentOptions.rooms.filter((room) => room.locationSlug === eventLocation);
+  const selectedService = appointmentOptions.services.find((service) => service.slug === eventService);
+  const selectedRoom = eventRoom === ANY_ROOM_VALUE
+    ? appointmentOptions.rooms.find((room) => room.id === selectedSlot?.availableRooms?.[0]?.id)
+    : appointmentOptions.rooms.find((room) => room.id === eventRoom);
+  const selectedTherapist = appointmentOptions.therapists.find((therapist) => therapist.staffProfileId === eventTherapist);
+  const totalPrice = selectedService?.priceKobo ?? 0;
+  const dateChoices = Array.from({ length: 21 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+    return getDateKey(date);
+  });
+  const visibleTimeSlots = availableSlots.filter((slot) => {
+    if (slot.therapistId !== eventTherapist) return false;
+    const selectedRoomIsAvailable = eventRoom === ANY_ROOM_VALUE
+      ? slot.availableRooms ? slot.availableRooms.length > 0 : (slot as AppointmentSlot & { availableRoomCount?: number }).availableRoomCount !== 0
+      : slot.availableRooms
+        ? slot.availableRooms.some((room) => room.id === eventRoom)
+        : (slot as AppointmentSlot & { availableRoomCount?: number }).availableRoomCount !== 0;
+    const [hour, minute] = formatBookingTime(slot.startsAt).split(":").map(Number);
+    const startMinute = hour * 60 + minute;
+    return selectedRoomIsAvailable && startMinute >= 9 * 60 && startMinute + (selectedService?.durationMinutes ?? 0) <= 18 * 60;
+  });
+
+  async function loadAvailability(date: string) {
+    setSelectedDate(date);
+    setSelectedSlot(null);
+    setSlotError("");
+    setIsLoadingSlots(true);
+    try {
+      const params = new URLSearchParams({ locationSlug: eventLocation, date, serviceSlugs: eventService });
+      const response = await fetch(`${API_BASE_URL}/api/public/booking/availability?${params.toString()}`);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.message || "Unable to load available times.");
+      setAvailableSlots(payload.slots as AppointmentSlot[]);
+    } catch (error) {
+      setSlotError(error instanceof Error ? error.message : "Unable to load available times.");
+    } finally {
+      setIsLoadingSlots(false);
+    }
+  }
+
+  function goToNextStep() {
+    setSaveError("");
+    if (bookingStep === 1 && (!customerFirstName.trim() || !customerLastName.trim() || !/^\d{10}$/.test(customerPhoneDigits) || !eventLocation)) {
+      setSaveError("Enter the guest's name, a 10-digit Nigerian phone number, and a location.");
+      return;
+    }
+    if (bookingStep === 2 && (!eventServiceCategory || !eventService || !eventTherapist || !eventRoom)) {
+      setSaveError("Select a category, service, therapist, and room to continue.");
+      return;
+    }
+    if (bookingStep === 3 && !selectedSlot) {
+      setSaveError("Choose an available date and time to continue.");
+      return;
+    }
+    if (bookingStep === 2) void loadAvailability(selectedDate);
+    setBookingStep((current) => Math.min(5, current + 1));
+  }
+
+  function goToPreviousStep() {
+    setSaveError("");
+    setBookingStep((current) => Math.max(1, current - 1));
+  }
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
@@ -273,180 +489,100 @@ const Calendar: React.FC = () => {
           customButtons={{
             addEventButton: {
               text: "New appointment +",
-              click: openModal,
+              click: handleNewAppointment,
             },
           }}
         />
       </div>
 
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[760px] p-6 lg:p-10">
-        <div className="flex flex-col px-2 overflow-y-auto custom-scrollbar">
-          <div>
-            <h5 className="mb-2 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
-              {selectedEvent ? "Edit appointment" : "New appointment"}
-            </h5>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Book a service, assign a therapist, and reserve a room for the next spa visit.
-            </p>
-          </div>
-
-          {saveError && <p className="mt-4 rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">{saveError}</p>}
-
-          <div className="mt-8 grid gap-5 md:grid-cols-2">
-            <div className="md:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Appointment title
-              </label>
-              <input
-                type="text"
-                value={eventTitle}
-                onChange={(e) => setEventTitle(e.target.value)}
-                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Customer phone
-              </label>
-              <input
-                type="text"
-                value={eventCustomer}
-                onChange={(e) => setEventCustomer(e.target.value)}
-                placeholder="+234 812 123 4567"
-                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Service slug
-              </label>
-              <input
-                type="text"
-                value={eventService}
-                onChange={(e) => setEventService(e.target.value)}
-                placeholder="deep-tissue-massage"
-                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Therapist email
-              </label>
-              <input
-                type="text"
-                value={eventTherapist}
-                onChange={(e) => setEventTherapist(e.target.value)}
-                placeholder="therapist@spaelaris.com"
-                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Room name
-              </label>
-              <input
-                type="text"
-                value={eventRoom}
-                onChange={(e) => setEventRoom(e.target.value)}
-                placeholder="Treatment Room 1"
-                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Location slug</label>
-              <input
-                type="text"
-                value={eventLocation}
-                onChange={(e) => setEventLocation(e.target.value)}
-                placeholder="lagos"
-                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Start date & time
-              </label>
-              <input
-                type="datetime-local"
-                value={eventStartDate}
-                onChange={(e) => setEventStartDate(e.target.value)}
-                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                End date & time
-              </label>
-              <input
-                type="datetime-local"
-                value={eventEndDate}
-                onChange={(e) => setEventEndDate(e.target.value)}
-                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block mb-4 text-sm font-medium text-gray-700 dark:text-gray-400">
-                Status
-              </label>
-              <div className="flex flex-wrap items-center gap-4 sm:gap-5">
-                {Object.keys(calendarsEvents).map((key) => (
-                  <label
-                    key={key}
-                    className="flex items-center text-sm text-gray-700 dark:text-gray-400"
-                    htmlFor={`status-${key}`}
-                  >
-                    <span className="relative mr-2">
-                      <input
-                        className="sr-only"
-                        type="radio"
-                        name="event-status"
-                        id={`status-${key}`}
-                        checked={eventLevel === key}
-                        onChange={() => {
-                          setEventLevel(key);
-                          setEventStatus(key === "Danger" ? "Cancelled" : key === "Warning" ? "Pending" : key === "Primary" ? "Checked in" : "Confirmed");
-                        }}
-                      />
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 dark:border-gray-700">
-                        <span
-                          className={`h-2.5 w-2.5 rounded-full ${
-                            eventLevel === key ? "block bg-brand-500" : "hidden"
-                          }`}
-                        ></span>
-                      </span>
-                    </span>
-                    {key}
-                  </label>
-                ))}
+      <Modal isOpen={isOpen} onClose={closeModal} backdropClassName="fixed inset-0 h-full w-full bg-transparent" className="max-h-[92vh] max-w-3xl overflow-hidden border border-white/70 bg-white/60 p-0 shadow-xl backdrop-blur-xl">
+        <form onSubmit={(event) => { event.preventDefault(); if (selectedEvent || bookingStep === 5) void handleAddOrUpdateEvent(); else goToNextStep(); }} className="appointment-form flex max-h-[92vh] flex-col bg-white/60">
+          <header className="shrink-0 border-b border-[#dfceb5] px-6 py-5 sm:px-8">
+            <div className="flex items-start justify-between gap-4 pr-10">
+              <div>
+                <h2 className="text-xl font-semibold text-[#352b20]">{selectedEvent ? "Edit appointment" : bookingStep === 5 ? "Review booking" : "New appointment"}</h2>
+                <p className="mt-1 text-sm text-[#756451]">{selectedEvent ? selectedEvent.extendedProps.customer : `Step ${bookingStep} of 5`}</p>
               </div>
             </div>
+            {!selectedEvent && <div className="mt-4 flex gap-1.5" aria-label={`Step ${bookingStep} of 5`}>{[1, 2, 3, 4, 5].map((step) => <span key={step} className={`h-1.5 flex-1 rounded-full ${step <= bookingStep ? "bg-[#8b6844]" : "bg-[#dccbb3]"}`} />)}</div>}
+          </header>
+
+          {saveError && <p role="alert" className="mx-6 mt-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 sm:mx-8">{saveError}</p>}
+          {optionsError && !selectedEvent && <p role="alert" className="mx-6 mt-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 sm:mx-8">{optionsError}</p>}
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 custom-scrollbar sm:px-8">
+            {selectedEvent ? (
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-[#514333]">Start date &amp; time</label>
+                  <input required type="datetime-local" value={eventStartDate} onChange={(event) => setEventStartDate(event.target.value)} className="h-11 w-full rounded-lg border border-[#d5c3aa] bg-white px-4 text-sm text-gray-800" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-[#514333]">End date &amp; time</label>
+                  <input required type="datetime-local" value={eventEndDate} onChange={(event) => setEventEndDate(event.target.value)} className="h-11 w-full rounded-lg border border-[#d5c3aa] bg-white px-4 text-sm text-gray-800" />
+                </div>
+              </div>
+            ) : (
+              <>
+                {bookingStep === 1 && <div className="grid gap-5 sm:grid-cols-2">
+                  <div><label className="mb-1.5 block text-sm font-medium text-[#514333]">Customer first name</label><input autoFocus required value={customerFirstName} onChange={(event) => setCustomerFirstName(event.target.value)} autoComplete="given-name" className="h-11 w-full rounded-lg border border-[#d5c3aa] bg-white px-4 text-sm text-gray-800" /></div>
+                  <div><label className="mb-1.5 block text-sm font-medium text-[#514333]">Customer last name</label><input required value={customerLastName} onChange={(event) => setCustomerLastName(event.target.value)} autoComplete="family-name" className="h-11 w-full rounded-lg border border-[#d5c3aa] bg-white px-4 text-sm text-gray-800" /></div>
+                  <div><label className="mb-1.5 block text-sm font-medium text-[#514333]">Customer phone</label><div className="flex h-11 overflow-hidden rounded-lg border border-[#d5c3aa] bg-white"><span className="inline-flex items-center border-r border-[#dfceb5] bg-[#f8f2e9] px-3 text-sm font-medium text-[#514333]">+234</span><input required type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} pattern="[0-9]{10}" value={customerPhoneDigits} onChange={(event) => setCustomerPhoneDigits(event.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="8012345678" className="min-w-0 flex-1 bg-transparent px-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-hidden" /></div><p className="mt-1 text-xs text-[#756451]">Enter exactly 10 digits.</p></div>
+                  <div><label className="mb-1.5 block text-sm font-medium text-[#514333]">Location</label><select required value={eventLocation} onChange={(event) => { setEventLocation(event.target.value); setEventTherapist(""); setEventRoom(""); setSelectedSlot(null); }} disabled={isLoadingOptions} className="h-11 w-full rounded-lg border border-[#d5c3aa] bg-white px-4 text-sm text-gray-800"><option value="">{isLoadingOptions ? "Loading locations..." : "Select location"}</option>{appointmentOptions.locations.map((location) => <option key={location.id} value={location.slug}>{location.name}</option>)}</select></div>
+                </div>}
+
+                {bookingStep === 2 && <div className="grid gap-5 sm:grid-cols-2">
+                  <div><label className="mb-1.5 block text-sm font-medium text-[#514333]">Service category</label><select required value={eventServiceCategory} onChange={(event) => { setEventServiceCategory(event.target.value); setEventService(""); setEventTherapist(""); setSelectedSlot(null); }} disabled={isLoadingOptions} className="h-11 w-full rounded-lg border border-[#d5c3aa] bg-white px-4 text-sm text-gray-800"><option value="">Select category</option>{appointmentOptions.categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></div>
+                  <div><label className="mb-1.5 block text-sm font-medium text-[#514333]">Service</label><select required value={eventService} onChange={(event) => { setEventService(event.target.value); setEventTherapist(""); setSelectedSlot(null); }} disabled={!eventServiceCategory || isLoadingOptions} className="h-11 w-full rounded-lg border border-[#d5c3aa] bg-white px-4 text-sm text-gray-800"><option value="">Select service</option>{availableServices.map((service) => <option key={service.id} value={service.slug}>{service.name}{service.durationMinutes ? ` · ${service.durationMinutes} min` : ""}</option>)}</select></div>
+                  <div><label className="mb-1.5 block text-sm font-medium text-[#514333]">Therapist</label><select required value={eventTherapist} onChange={(event) => { setEventTherapist(event.target.value); setSelectedSlot(null); }} disabled={!eventLocation || !eventService || isLoadingOptions} className="h-11 w-full rounded-lg border border-[#d5c3aa] bg-white px-4 text-sm text-gray-800"><option value="">Select therapist</option>{availableTherapists.map((therapist) => <option key={therapist.staffProfileId} value={therapist.staffProfileId}>{therapist.firstName} {therapist.lastName}</option>)}</select>{eventService && availableTherapists.length === 0 && <p className="mt-1 text-xs text-[#9a5637]">No therapist at this location is assigned to the selected service.</p>}</div>
+                  <div><label className="mb-1.5 block text-sm font-medium text-[#514333]">Room</label><select required value={eventRoom} onChange={(event) => { setEventRoom(event.target.value); setSelectedSlot(null); }} disabled={!eventLocation || isLoadingOptions} className="h-11 w-full rounded-lg border border-[#d5c3aa] bg-white px-4 text-sm text-gray-800"><option value="">Select room</option><option value={ANY_ROOM_VALUE}>Any room</option>{availableRooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}</select></div>
+                </div>}
+
+                {bookingStep === 3 && <div>
+                  <h3 className="text-lg font-semibold text-[#352b20]">Select a date</h3>
+                  <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-3" aria-label="Available dates">
+                    {dateChoices.map((date) => {
+                      const [weekday, day, month] = formatBookingDate(date).split(" ");
+                      return <button key={date} type="button" onClick={() => void loadAvailability(date)} className={`flex h-28 w-[88px] shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-xl border transition ${selectedDate === date ? "border-[#8b6844] bg-[#8b6844] text-white" : "border-[#d5c3aa] bg-white text-[#514333] hover:border-[#8b6844]"}`}><span className="text-sm">{weekday}</span><strong className="text-2xl">{day}</strong><span className="text-sm">{month}</span></button>;
+                    })}
+                  </div>
+                  <div className="mt-5">
+                    <h3 className="text-lg font-semibold text-[#352b20]">Pick a time</h3>
+                    {slotError && <p role="alert" className="mt-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{slotError}</p>}
+                    {isLoadingSlots ? <p className="mt-3 text-sm text-[#756451]">Loading available times...</p> : visibleTimeSlots.length > 0 ? <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">{visibleTimeSlots.map((slot) => <button key={`${slot.startsAt}-${slot.therapistId}`} type="button" onClick={() => setSelectedSlot(slot)} className={`flex min-h-14 w-full items-center justify-between rounded-xl border px-4 text-left transition ${selectedSlot?.startsAt === slot.startsAt ? "border-[#8b6844] bg-[#8b6844] text-white" : "border-[#d5c3aa] bg-white text-[#352b20] hover:border-[#8b6844]"}`}><span className="text-base font-semibold">{formatBookingTime(slot.startsAt)}</span><span className="text-xs">{formatBookingTime(slot.endsAt)} end</span></button>)}</div> : <p className="mt-3 rounded-lg bg-white/70 px-4 py-5 text-sm text-[#756451]">{eventService && eventTherapist && eventRoom ? "No matching times between 09:00 and 18:00 on this date." : "Choose a service, therapist, and room first."}</p>}
+                  </div>
+                </div>}
+
+                {bookingStep === 4 && <div><label className="mb-2 block text-sm font-medium text-[#514333]">Customer note</label><p className="mb-3 text-sm text-[#756451]">Add preferences or details the front desk and therapist should know.</p><textarea autoFocus value={customerNote} onChange={(event) => setCustomerNote(event.target.value)} rows={6} maxLength={1000} placeholder="Add a note for this guest..." className="w-full resize-y rounded-xl border border-[#d5c3aa] bg-white px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#8b6844] focus:outline-hidden" /><p className="mt-1 text-right text-xs text-[#756451]">{customerNote.length}/1000</p></div>}
+
+                {bookingStep === 5 && <div>
+                  <h3 className="text-lg font-semibold text-[#352b20]">Review booking</h3>
+                  <dl className="mt-4 divide-y divide-[#dfceb5] rounded-xl border border-[#dfceb5] bg-white px-4">
+                    {[["Guest", `${customerFirstName} ${customerLastName}`], ["Phone", `+234 ${customerPhoneDigits}`], ["Location", appointmentOptions.locations.find((location) => location.slug === eventLocation)?.name ?? ""], ["Category", appointmentOptions.categories.find((category) => category.slug === eventServiceCategory)?.name ?? ""], ["Treatment", selectedService?.name ?? ""], ["Date", formatBookingDate(selectedDate)], ["Time", selectedSlot ? `${formatBookingTime(selectedSlot.startsAt)} - ${formatBookingTime(selectedSlot.endsAt)}` : ""], ["Therapist", selectedTherapist ? `${selectedTherapist.firstName} ${selectedTherapist.lastName}` : ""], ["Room", selectedRoom?.name ?? ""], ["Amount", new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalPrice / 100)]].map(([label, value]) => <div key={label} className="flex items-start justify-between gap-4 py-3 text-sm"><dt className="text-[#756451]">{label}</dt><dd className="text-right font-medium text-[#352b20]">{value}</dd></div>)}
+                    {customerNote.trim() && <div className="py-3 text-sm"><dt className="text-[#756451]">Customer note</dt><dd className="mt-1 whitespace-pre-wrap text-[#352b20]">{customerNote}</dd></div>}
+                  </dl>
+                </div>}
+              </>
+            )}
           </div>
 
-          <div className="mt-6 flex items-center gap-3 sm:justify-end">
-            <button
-              onClick={closeModal}
-              type="button"
-              className="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] sm:w-auto"
-            >
-              Close
-            </button>
-            <button
-              onClick={handleAddOrUpdateEvent}
-              type="button"
-              className="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto"
-            >
-              {isSaving ? "Saving..." : selectedEvent ? "Update appointment" : "Save appointment"}
-            </button>
-          </div>
+          <footer className="shrink-0 border-t border-white/50 bg-white/60 px-6 py-4 sm:px-8">
+            {!selectedEvent && bookingStep === 2 && <div className="mb-4 flex items-center justify-between border-b border-[#dfceb5] pb-3 text-sm"><span className="text-[#756451]">Selected service</span><span className="font-semibold text-[#352b20]">{selectedService ? new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalPrice / 100) : "Select a service"}</span></div>}
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+              {selectedEvent ? <><button onClick={closeModal} type="button" className="rounded-lg border border-[#cdb89b] bg-white px-4 py-2.5 text-sm font-medium text-[#514333]">Cancel</button><button type="submit" disabled={isSaving} className="rounded-lg bg-[#8b6844] px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60">{isSaving ? "Saving..." : "Save changes"}</button></> : bookingStep === 5 ? <><button onClick={closeModal} type="button" className="rounded-lg border border-[#cdb89b] bg-white px-4 py-2.5 text-sm font-medium text-[#514333]">Cancel</button><button type="submit" disabled={isSaving || !selectedSlot} className="rounded-lg bg-[#8b6844] px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60">{isSaving ? "Confirming..." : "Confirm booking"}</button></> : <><button onClick={goToPreviousStep} type="button" disabled={bookingStep === 1} className="rounded-lg border border-[#cdb89b] bg-white px-4 py-2.5 text-sm font-medium text-[#514333] disabled:invisible">Previous</button><button onClick={goToNextStep} type="button" disabled={isLoadingOptions || Boolean(optionsError) || (bookingStep === 3 && (isLoadingSlots || !selectedSlot))} className="rounded-lg bg-[#8b6844] px-5 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">Next</button></>}
+            </div>
+          </footer>
+        </form>
+      </Modal>
+
+      <Modal isOpen={isConfirmationOpen} onClose={() => setIsConfirmationOpen(false)} className="max-w-md bg-[#f1e6d5] p-6 sm:p-8">
+        <div className="text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#e1d2bb] text-2xl text-[#6e5539]">✓</div>
+          <h2 className="mt-4 text-2xl font-semibold text-[#352b20]">Booking Confirmed</h2>
+          <p className="mt-2 text-sm text-[#756451]">{confirmedBooking?.customer}&apos;s appointment is booked.</p>
         </div>
+        {confirmedBooking && <dl className="mt-5 space-y-2 rounded-xl bg-white p-4 text-sm text-[#514333]">{[["Phone", confirmedBooking.phone], ["Category", confirmedBooking.category], ["Treatment", confirmedBooking.service], ["Amount", confirmedBooking.amount], ["Location", confirmedBooking.location], ["Date & time", `${confirmedBooking.date}, ${confirmedBooking.time}`], ["Therapist", confirmedBooking.therapist], ["Room", confirmedBooking.room]].map(([label, value]) => <div key={label} className="flex justify-between gap-4"><dt className="text-[#756451]">{label}</dt><dd className="text-right font-medium">{value}</dd></div>)}{confirmedBooking.note && <div className="border-t border-[#eadfce] pt-2"><dt className="text-[#756451]">Customer note</dt><dd className="mt-1 whitespace-pre-wrap">{confirmedBooking.note}</dd></div>}</dl>}
+        <button type="button" onClick={() => setIsConfirmationOpen(false)} className="mt-6 w-full rounded-lg bg-[#8b6844] px-4 py-2.5 text-sm font-medium text-white">Close</button>
       </Modal>
     </div>
   );

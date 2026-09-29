@@ -1,19 +1,17 @@
+import { AuthenticatedRequest } from '../auth/auth.types';
 import { DashboardService } from './dashboard.service';
 export declare class DashboardController {
     private readonly dashboardService;
     constructor(dashboardService: DashboardService);
-    summary(): Promise<{
+    summary(request: AuthenticatedRequest): Promise<{
         staff: number;
         services: number;
         categories: number;
         appointmentsToday: number;
         todaySchedule: {
-            status: import(".prisma/client").$Enums.AppointmentStatus;
             id: string;
-            services: {
-                name: string;
-            }[];
             startsAt: Date;
+            status: import(".prisma/client").$Enums.AppointmentStatus;
             customer: {
                 firstName: string;
                 lastName: string;
@@ -26,6 +24,9 @@ export declare class DashboardController {
                 firstName: string;
                 lastName: string;
             } | null;
+            services: {
+                name: string;
+            }[];
         }[];
         revenueTodayKobo: number;
         availableTherapists: number;

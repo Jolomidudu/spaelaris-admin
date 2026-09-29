@@ -10,6 +10,10 @@ export declare class PublicBookingService {
         address: string;
         city: string;
         timezone: string;
+        rooms: {
+            id: string;
+            name: string;
+        }[];
     }[]>;
     availability(locationSlug: string, date: string, serviceSlugs: string[]): Promise<{
         date: string;
@@ -22,6 +26,10 @@ export declare class PublicBookingService {
             therapistId: string;
             therapistName: string;
             availableRoomCount: number;
+            availableRooms: {
+                id: string;
+                name: string;
+            }[];
         }[];
     }>;
     createBooking(data: {
@@ -36,25 +44,25 @@ export declare class PublicBookingService {
         endsAt: string;
         notes?: string;
     }): Promise<{
+        id: string;
         startsAt: Date;
         endsAt: Date;
+        status: import(".prisma/client").$Enums.AppointmentStatus;
         location: {
             name: string;
             city: string;
         };
-        id: string;
+        therapist: {
+            firstName: string;
+            lastName: string;
+        } | null;
+        room: {
+            name: string;
+        } | null;
         services: {
             name: string;
             durationMinutes: number;
             unitPriceKobo: number;
         }[];
-        status: import(".prisma/client").$Enums.AppointmentStatus;
-        room: {
-            name: string;
-        } | null;
-        therapist: {
-            firstName: string;
-            lastName: string;
-        } | null;
     }>;
 }

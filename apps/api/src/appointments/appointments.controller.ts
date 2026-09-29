@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
-import { IsDateString, IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsDateString, IsEmail, IsIn, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Permission } from '../auth/permissions';
 import { PermissionsGuard } from '../auth/permissions.guard';
@@ -9,8 +9,20 @@ import { AppointmentsService } from './appointments.service';
 
 class CreateAppointmentDto {
   @IsString()
-  @MinLength(7)
+  @Matches(/^\d{10}$/)
   customerPhone!: string;
+
+  @IsString()
+  @MinLength(1)
+  customerFirstName!: string;
+
+  @IsString()
+  @MinLength(1)
+  customerLastName!: string;
+
+  @IsOptional()
+  @IsString()
+  customerNote?: string;
 
   @IsString()
   @MinLength(1)
@@ -23,6 +35,10 @@ class CreateAppointmentDto {
   @IsOptional()
   @IsEmail()
   therapistEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  therapistProfileId?: string;
 
   @IsOptional()
   @IsString()
@@ -70,6 +86,11 @@ export class AppointmentsController {
   @Get()
   list() {
     return this.appointmentsService.list();
+  }
+
+  @Get('options')
+  options() {
+    return this.appointmentsService.options();
   }
 
   @Post()

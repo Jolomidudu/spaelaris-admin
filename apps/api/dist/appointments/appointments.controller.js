@@ -25,9 +25,24 @@ class CreateAppointmentDto {
 }
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(7),
+    (0, class_validator_1.Matches)(/^\d{10}$/),
     __metadata("design:type", String)
 ], CreateAppointmentDto.prototype, "customerPhone", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], CreateAppointmentDto.prototype, "customerFirstName", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], CreateAppointmentDto.prototype, "customerLastName", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateAppointmentDto.prototype, "customerNote", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MinLength)(1),
@@ -43,6 +58,11 @@ __decorate([
     (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
 ], CreateAppointmentDto.prototype, "therapistEmail", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateAppointmentDto.prototype, "therapistProfileId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
@@ -95,6 +115,9 @@ let AppointmentsController = class AppointmentsController {
     list() {
         return this.appointmentsService.list();
     }
+    options() {
+        return this.appointmentsService.options();
+    }
     create(body) {
         return this.appointmentsService.create(body);
     }
@@ -109,6 +132,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AppointmentsController.prototype, "list", null);
+__decorate([
+    (0, common_1.Get)('options'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AppointmentsController.prototype, "options", null);
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),

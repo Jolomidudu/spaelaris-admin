@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { AppointmentStatus, PaymentStatus, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { AuthenticatedUser } from '../auth/auth.types';
 
 function getLocalDayRange(timeZone: string, now: Date) {
   const dateLabel = new Intl.DateTimeFormat('en-CA', {
@@ -41,9 +42,20 @@ function getLocalDayRange(timeZone: string, now: Date) {
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async summary() {
+  async summary(user?: AuthenticatedUser) {
     const now = new Date();
     const { start: todayStart, end: todayEnd } = getLocalDayRange('Africa/Lagos', now);
+    let locationId: string | undefined;
+    if (user?.role === UserRole.RECEPTIONIST) {
+      const staffProfile = await this.prisma.staffProfile.findUnique({
+        where: { userId: user.id },
+        select: { locationId: true },
+      });
+      if (!staffProfile) throw new ForbiddenException('Receptionist is not assigned to a branch');
+      locationId = staffProfile.locationId;
+    }
+    const appointmentLocationFilter = locationId ? { locationId } : {};
+    const paymentLocationFilter = locationId ? { appointment: { locationId } } : {};
     const [staff, services, categories, appointmentsToday, todaySchedule, revenueToday, availableTherapists, pendingPayments] = await Promise.all([
       this.prisma.user.count({
         where: {
@@ -59,12 +71,14 @@ export class DashboardService {
         where: {
           startsAt: { gte: todayStart, lt: todayEnd },
           status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW] },
+          ...appointmentLocationFilter,
         },
       }),
       this.prisma.appointment.findMany({
         where: {
           startsAt: { gte: todayStart, lt: todayEnd },
           status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW] },
+          ...appointmentLocationFilter,
         },
         orderBy: { startsAt: 'asc' },
         take: 6,
@@ -79,12 +93,13 @@ export class DashboardService {
         },
       }),
       this.prisma.payment.aggregate({
-        where: { status: PaymentStatus.PAID, paidAt: { gte: todayStart, lt: todayEnd } },
+        where: { status: PaymentStatus.PAID, paidAt: { gte: todayStart, lt: todayEnd }, ...paymentLocationFilter },
         _sum: { amountKobo: true },
       }),
       this.prisma.staffProfile.count({
         where: {
           isBookable: true,
+          ...(locationId ? { locationId } : {}),
           location: { isActive: true },
           timeOff: { none: { startsAt: { lte: now }, endsAt: { gt: now } } },
           user: {
@@ -101,13 +116,13 @@ export class DashboardService {
         },
       }),
       this.prisma.payment.aggregate({
-        where: { status: PaymentStatus.PENDING },
+        where: { status: PaymentStatus.PENDING, ...paymentLocationFilter },
         _sum: { amountKobo: true },
         _count: { _all: true },
       }),
     ]);
 
-    return {
+    const result = {
       staff,
       services,
       categories,
@@ -118,5 +133,9 @@ export class DashboardService {
       pendingPaymentsKobo: pendingPayments._sum.amountKobo ?? 0,
       pendingPaymentCount: pendingPayments._count._all,
     };
+    if (user?.role === UserRole.RECEPTIONIST) {
+      return { ...result, staff: 0, services: 0, categories: 0, revenueTodayKobo: 0 };
+    }
+    return result;
   }
 }

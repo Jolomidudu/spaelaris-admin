@@ -67,22 +67,57 @@ let AppointmentsService = class AppointmentsService {
         });
     }
     async create(data) {
+        const phoneDigits = data.customerPhone.trim();
+        if (!/^\d{10}$/.test(phoneDigits))
+            throw new common_1.BadRequestException('Enter exactly 10 Nigerian phone digits');
         const [customer, service, location] = await Promise.all([
-            this.prisma.customer.findUnique({ where: { phone: data.customerPhone.trim() } }),
+            this.prisma.customer.findFirst({ where: { phone: { in: [`0${phoneDigits}`, phoneDigits, `+234${phoneDigits}`, `234${phoneDigits}`] } } }),
             this.prisma.service.findUnique({ where: { slug: data.serviceSlug } }),
             this.prisma.location.findUnique({ where: { slug: data.locationSlug } }),
         ]);
-        if (!customer)
-            throw new common_1.BadRequestException('Customer phone was not found');
         if (!service || !service.isActive)
             throw new common_1.BadRequestException('Service was not found');
         if (!location || !location.isActive)
             throw new common_1.BadRequestException('Location was not found');
-        const therapist = data.therapistEmail
-            ? await this.prisma.user.findUnique({ where: { email: data.therapistEmail.trim().toLowerCase() } })
-            : null;
-        if (data.therapistEmail && (!therapist || therapist.role !== 'THERAPIST')) {
+        let therapistUser = null;
+        let therapistProfile = null;
+        if (data.therapistProfileId) {
+            const profile = await this.prisma.staffProfile.findUnique({
+                where: { id: data.therapistProfileId },
+                select: {
+                    locationId: true,
+                    services: { select: { serviceId: true } },
+                    user: { select: { id: true, role: true } },
+                },
+            });
+            therapistUser = profile?.user ?? null;
+            therapistProfile = profile ? { locationId: profile.locationId, services: profile.services } : null;
+        }
+        else if (data.therapistEmail) {
+            const user = await this.prisma.user.findUnique({
+                where: { email: data.therapistEmail.trim().toLowerCase() },
+                select: {
+                    id: true,
+                    role: true,
+                    staffProfile: {
+                        select: {
+                            locationId: true,
+                            services: { select: { serviceId: true } },
+                        },
+                    },
+                },
+            });
+            therapistUser = user ? { id: user.id, role: user.role } : null;
+            therapistProfile = user?.staffProfile ?? null;
+        }
+        if ((data.therapistEmail || data.therapistProfileId) && (!therapistUser || therapistUser.role !== 'THERAPIST')) {
             throw new common_1.BadRequestException('Therapist was not found');
+        }
+        if (therapistProfile && therapistProfile.locationId !== location.id) {
+            throw new common_1.BadRequestException('Therapist is not assigned to this location');
+        }
+        if (therapistProfile && !therapistProfile.services.some(({ serviceId }) => serviceId === service.id)) {
+            throw new common_1.BadRequestException('Therapist is not assigned to this service');
         }
         const room = data.roomName
             ? await this.prisma.room.findUnique({ where: { locationId_name: { locationId: location.id, name: data.roomName.trim() } } })
@@ -93,27 +128,118 @@ let AppointmentsService = class AppointmentsService {
         const endsAt = new Date(data.endsAt);
         if (endsAt <= startsAt)
             throw new common_1.BadRequestException('Appointment end must be after its start');
-        return this.prisma.appointment.create({
-            data: {
-                customerId: customer.id,
-                locationId: location.id,
-                therapistId: therapist?.id,
-                roomId: room?.id,
-                startsAt,
-                endsAt,
-                status: data.status || client_1.AppointmentStatus.PENDING,
-                notes: data.notes?.trim() || undefined,
-                services: {
-                    create: {
-                        serviceId: service.id,
-                        name: service.name,
-                        durationMinutes: service.durationMinutes ?? Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000),
-                        unitPriceKobo: service.priceKobo,
+        const conflicts = await Promise.all([
+            therapistUser
+                ? this.prisma.appointment.findFirst({
+                    where: {
+                        therapistId: therapistUser.id,
+                        startsAt: { lt: endsAt },
+                        endsAt: { gt: startsAt },
+                        status: { in: [client_1.AppointmentStatus.PENDING, client_1.AppointmentStatus.CONFIRMED, client_1.AppointmentStatus.CHECKED_IN, client_1.AppointmentStatus.IN_SERVICE] },
+                    },
+                    select: { id: true },
+                })
+                : Promise.resolve(null),
+            room
+                ? this.prisma.appointment.findFirst({
+                    where: {
+                        roomId: room.id,
+                        startsAt: { lt: endsAt },
+                        endsAt: { gt: startsAt },
+                        status: { in: [client_1.AppointmentStatus.PENDING, client_1.AppointmentStatus.CONFIRMED, client_1.AppointmentStatus.CHECKED_IN, client_1.AppointmentStatus.IN_SERVICE] },
+                    },
+                    select: { id: true },
+                })
+                : Promise.resolve(null),
+        ]);
+        if (conflicts.some(Boolean))
+            throw new common_1.BadRequestException('That therapist or room is no longer available at this time');
+        return this.prisma.$transaction(async (transaction) => {
+            const customerData = {
+                firstName: data.customerFirstName.trim(),
+                lastName: data.customerLastName.trim(),
+                notes: data.customerNote?.trim() || undefined,
+            };
+            const savedCustomer = customer
+                ? await transaction.customer.update({ where: { id: customer.id }, data: customerData })
+                : await transaction.customer.create({
+                    data: { ...customerData, phone: `0${phoneDigits}` },
+                });
+            return transaction.appointment.create({
+                data: {
+                    customerId: savedCustomer.id,
+                    locationId: location.id,
+                    therapistId: therapistUser?.id,
+                    roomId: room?.id,
+                    startsAt,
+                    endsAt,
+                    status: data.status || client_1.AppointmentStatus.PENDING,
+                    notes: data.notes?.trim() || data.customerNote?.trim() || undefined,
+                    services: {
+                        create: {
+                            serviceId: service.id,
+                            name: service.name,
+                            durationMinutes: service.durationMinutes ?? Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000),
+                            unitPriceKobo: service.priceKobo,
+                        },
                     },
                 },
-            },
-            select: { id: true, startsAt: true, endsAt: true, status: true },
+                select: { id: true, startsAt: true, endsAt: true, status: true },
+            });
         });
+    }
+    async options() {
+        const [locations, categories, services, therapists, rooms] = await Promise.all([
+            this.prisma.location.findMany({
+                where: { isActive: true },
+                orderBy: { name: 'asc' },
+                select: { id: true, name: true, slug: true },
+            }),
+            this.prisma.serviceCategory.findMany({
+                where: { isActive: true },
+                orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+                select: { id: true, name: true, slug: true },
+            }),
+            this.prisma.service.findMany({
+                where: { isActive: true, category: { isActive: true } },
+                orderBy: [{ category: { sortOrder: 'asc' } }, { name: 'asc' }],
+                select: { id: true, name: true, slug: true, durationMinutes: true, priceKobo: true, category: { select: { id: true, name: true, slug: true } } },
+            }),
+            this.prisma.user.findMany({
+                where: { role: 'THERAPIST', status: 'ACTIVE', staffProfile: { isBookable: true } },
+                orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+                select: {
+                    id: true,
+                    email: true,
+                    firstName: true,
+                    lastName: true,
+                    staffProfile: {
+                        select: {
+                            id: true,
+                            location: { select: { slug: true } },
+                            services: { select: { service: { select: { slug: true } } } },
+                        },
+                    },
+                },
+            }),
+            this.prisma.room.findMany({
+                where: { isActive: true, location: { isActive: true } },
+                orderBy: [{ location: { name: 'asc' } }, { name: 'asc' }],
+                select: { id: true, name: true, location: { select: { slug: true } } },
+            }),
+        ]);
+        return {
+            locations,
+            categories,
+            services,
+            therapists: therapists.map(({ staffProfile, ...therapist }) => ({
+                ...therapist,
+                staffProfileId: staffProfile?.id ?? '',
+                locationSlug: staffProfile?.location.slug ?? '',
+                serviceSlugs: staffProfile?.services.map(({ service }) => service.slug) ?? [],
+            })),
+            rooms: rooms.map(({ location, ...room }) => ({ ...room, locationSlug: location.slug })),
+        };
     }
     list() {
         return this.prisma.appointment.findMany({

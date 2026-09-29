@@ -1,8 +1,8 @@
 "use client";
 
 import { API_BASE_URL } from "@/lib/api";
-import { getAccessToken, getStoredAuth } from "@/lib/auth";
-import { useEffect, useState } from "react";
+import { getAccessToken, getStoredRoleSnapshot, subscribeToAuthChanges } from "@/lib/auth";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import React from "react";
 
 
@@ -35,12 +35,10 @@ function formatNaira(amountKobo: number) {
 }
 
 export default function SpaDashboard() {
-  const [role, setRole] = useState("OWNER");
+  const role = useSyncExternalStore(subscribeToAuthChanges, getStoredRoleSnapshot, () => "OWNER");
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
 
   useEffect(() => {
-    setRole(getStoredAuth()?.user.role ?? "OWNER");
-
     const token = getAccessToken();
     if (!token) return;
 
@@ -71,6 +69,22 @@ export default function SpaDashboard() {
     { label: "Reviews", value: "435", detail: "Customer reviews", tone: "text-brand-500" },
   ];
   const allMetrics = [...metrics, ...inventoryMetrics];
+  const visibleMetrics = isTherapist
+    ? allMetrics.slice(0, 2)
+    : isReceptionist
+      ? metrics.filter((metric) => metric.label !== "Today’s revenue")
+      : allMetrics;
+  const quickActions = isReceptionist
+    ? [
+      ["New appointment", "Book or update a guest visit", "/appointments"],
+      ["Register customer", "Add a guest to the directory", "/customers"],
+      ["Review payments", "Check balances and payment status", "/payments"],
+    ]
+    : [
+      ["Register customer", "Add a new customer to the directory", "/customers"],
+      ["Open appointment calendar", "Review bookings and therapist schedules", "/calendar"],
+      ["Review payments", "Reconcile today’s outstanding balances", "/payments"],
+    ];
 
   return (
     <div className="space-y-6">
@@ -78,15 +92,15 @@ export default function SpaDashboard() {
         <div>
           <p className="mb-2 text-sm font-medium text-[#3f3f2e]-500">{greeting}</p>
           <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">Good Day</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{isTherapist ? "Your assigned appointments and treatment schedule for today." : "Here is what is happening across Spaelaris today."}</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{isTherapist ? "Your assigned appointments and treatment schedule for today." : isReceptionist ? "Your branch’s appointments, guests, and payments for today." : "Here is what is happening across Spaelaris today."}</p>
         </div>
-        {!isTherapist && <a href="/appointments" className="rounded-lg bg-gray-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-600">New appointment</a>}
+        {!isTherapist && <a href="/appointments" className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-600">New appointment</a>}
       </div>
 
       
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        {(isTherapist ? allMetrics.slice(0, 2) : isReceptionist ? allMetrics.filter((metric) => metric.label !== "Available therapists") : allMetrics).map((metric) => (
+        {visibleMetrics.map((metric) => (
           <div key={metric.label} className="min-w-0 rounded-2xl border border-gray-200 bg-white p-3 sm:p-5 dark:border-gray-800 dark:bg-white/[0.03]">
             <p className="text-xs text-gray-500 sm:text-sm dark:text-gray-400">{metric.label}</p>
             <p className={`mt-3 break-words text-xl font-semibold sm:text-2xl ${metric.tone}`}>{metric.value}</p>
@@ -100,7 +114,7 @@ export default function SpaDashboard() {
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
             <div>
               <h2 className="font-semibold text-gray-800 dark:text-white/90">Today’s schedule</h2>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{summary ? `${summary.appointmentsToday} appointment${summary.appointmentsToday === 1 ? "" : "s"} across both locations` : "Loading today’s appointments..."}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{summary ? `${summary.appointmentsToday} appointment${summary.appointmentsToday === 1 ? "" : "s"}${isReceptionist ? " at your branch" : " across both locations"}` : "Loading today’s appointments..."}</p>
             </div>
             <a href="/appointments" className="text-sm font-medium text-brand-500 hover:text-brand-600">View appointments</a>
           </div>
@@ -132,11 +146,7 @@ export default function SpaDashboard() {
             <span className="text-xl text-brand-500">✦</span>
           </div>
           <div className="mt-5 grid gap-3">
-            {[
-              ["Register customer", "Add a new customer to the directory", "/customers"],
-              ["Manage availability", "Update therapist shifts and time off", "/calendar"],
-              ["Review payments", "Reconcile today’s outstanding balances", "/payments"],
-            ].map(([title, detail, href]) => (
+            {quickActions.map(([title, detail, href]) => (
               <a key={title} href={href} className="rounded-xl border border-gray-100 p-4 transition hover:border-brand-200 hover:bg-brand-50/50 dark:border-gray-800 dark:hover:border-brand-500/40 dark:hover:bg-brand-500/5">
                 <p className="text-sm font-medium text-gray-800 dark:text-white/90">{title}</p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{detail}</p>

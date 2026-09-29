@@ -23,27 +23,31 @@ export declare class CatalogController {
         address: string;
         city: string;
         timezone: string;
+        rooms: {
+            id: string;
+            name: string;
+        }[];
     }[]>;
     catalog(): import(".prisma/client").Prisma.PrismaPromise<{
         number: string | null;
         id: string;
+        services: {
+            id: string;
+            includes: string[];
+            name: string;
+            photoUrl: string | null;
+            slug: string;
+            description: string | null;
+            details: string | null;
+            benefits: string[];
+            durationMinutes: number | null;
+            priceKobo: number;
+        }[];
         name: string;
         slug: string;
         description: string | null;
         shortName: string | null;
         imageUrl: string | null;
-        services: {
-            id: string;
-            name: string;
-            slug: string;
-            description: string | null;
-            details: string | null;
-            benefits: string[];
-            includes: string[];
-            durationMinutes: number | null;
-            priceKobo: number;
-            photoUrl: string | null;
-        }[];
     }[]>;
     therapists(): Promise<{
         publicSlug: string;
@@ -83,29 +87,33 @@ export declare class CatalogController {
             therapistId: string;
             therapistName: string;
             availableRoomCount: number;
+            availableRooms: {
+                id: string;
+                name: string;
+            }[];
         }[];
     }>;
     createBooking(body: CreatePublicBookingDto): Promise<{
+        id: string;
         startsAt: Date;
         endsAt: Date;
+        status: import(".prisma/client").$Enums.AppointmentStatus;
         location: {
             name: string;
             city: string;
         };
-        id: string;
+        therapist: {
+            firstName: string;
+            lastName: string;
+        } | null;
+        room: {
+            name: string;
+        } | null;
         services: {
             name: string;
             durationMinutes: number;
             unitPriceKobo: number;
         }[];
-        status: import(".prisma/client").$Enums.AppointmentStatus;
-        room: {
-            name: string;
-        } | null;
-        therapist: {
-            firstName: string;
-            lastName: string;
-        } | null;
     }>;
 }
 export {};

@@ -53,7 +53,19 @@ let PublicBookingService = class PublicBookingService {
         return this.prisma.location.findMany({
             where: { isActive: true },
             orderBy: { name: 'asc' },
-            select: { id: true, name: true, slug: true, address: true, city: true, timezone: true },
+            select: {
+                id: true,
+                name: true,
+                slug: true,
+                address: true,
+                city: true,
+                timezone: true,
+                rooms: {
+                    where: { isActive: true },
+                    orderBy: { name: 'asc' },
+                    select: { id: true, name: true },
+                },
+            },
         });
     }
     async availability(locationSlug, date, serviceSlugs) {
@@ -161,15 +173,16 @@ let PublicBookingService = class PublicBookingService {
                         continue;
                     if (appointments.some((item) => item.therapistId === profile.user.id && overlaps(candidate, item)))
                         continue;
-                    const availableRoomCount = rooms.filter((room) => !roomAppointments.some((item) => item.roomId === room.id && overlaps(candidate, item))).length;
-                    if (availableRoomCount === 0)
+                    const availableRooms = rooms.filter((room) => !roomAppointments.some((item) => item.roomId === room.id && overlaps(candidate, item)));
+                    if (availableRooms.length === 0)
                         continue;
                     slots.push({
                         startsAt: startsAt.toISOString(),
                         endsAt: endsAt.toISOString(),
                         therapistId: profile.id,
                         therapistName: `${profile.user.firstName} ${profile.user.lastName}`,
-                        availableRoomCount,
+                        availableRoomCount: availableRooms.length,
+                        availableRooms,
                     });
                 }
             }

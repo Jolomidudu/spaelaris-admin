@@ -44,9 +44,21 @@ let DashboardService = class DashboardService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async summary() {
+    async summary(user) {
         const now = new Date();
         const { start: todayStart, end: todayEnd } = getLocalDayRange('Africa/Lagos', now);
+        let locationId;
+        if (user?.role === client_1.UserRole.RECEPTIONIST) {
+            const staffProfile = await this.prisma.staffProfile.findUnique({
+                where: { userId: user.id },
+                select: { locationId: true },
+            });
+            if (!staffProfile)
+                throw new common_1.ForbiddenException('Receptionist is not assigned to a branch');
+            locationId = staffProfile.locationId;
+        }
+        const appointmentLocationFilter = locationId ? { locationId } : {};
+        const paymentLocationFilter = locationId ? { appointment: { locationId } } : {};
         const [staff, services, categories, appointmentsToday, todaySchedule, revenueToday, availableTherapists, pendingPayments] = await Promise.all([
             this.prisma.user.count({
                 where: {
@@ -62,12 +74,14 @@ let DashboardService = class DashboardService {
                 where: {
                     startsAt: { gte: todayStart, lt: todayEnd },
                     status: { notIn: [client_1.AppointmentStatus.CANCELLED, client_1.AppointmentStatus.NO_SHOW] },
+                    ...appointmentLocationFilter,
                 },
             }),
             this.prisma.appointment.findMany({
                 where: {
                     startsAt: { gte: todayStart, lt: todayEnd },
                     status: { notIn: [client_1.AppointmentStatus.CANCELLED, client_1.AppointmentStatus.NO_SHOW] },
+                    ...appointmentLocationFilter,
                 },
                 orderBy: { startsAt: 'asc' },
                 take: 6,
@@ -82,12 +96,13 @@ let DashboardService = class DashboardService {
                 },
             }),
             this.prisma.payment.aggregate({
-                where: { status: client_1.PaymentStatus.PAID, paidAt: { gte: todayStart, lt: todayEnd } },
+                where: { status: client_1.PaymentStatus.PAID, paidAt: { gte: todayStart, lt: todayEnd }, ...paymentLocationFilter },
                 _sum: { amountKobo: true },
             }),
             this.prisma.staffProfile.count({
                 where: {
                     isBookable: true,
+                    ...(locationId ? { locationId } : {}),
                     location: { isActive: true },
                     timeOff: { none: { startsAt: { lte: now }, endsAt: { gt: now } } },
                     user: {
@@ -104,12 +119,12 @@ let DashboardService = class DashboardService {
                 },
             }),
             this.prisma.payment.aggregate({
-                where: { status: client_1.PaymentStatus.PENDING },
+                where: { status: client_1.PaymentStatus.PENDING, ...paymentLocationFilter },
                 _sum: { amountKobo: true },
                 _count: { _all: true },
             }),
         ]);
-        return {
+        const result = {
             staff,
             services,
             categories,
@@ -120,6 +135,10 @@ let DashboardService = class DashboardService {
             pendingPaymentsKobo: pendingPayments._sum.amountKobo ?? 0,
             pendingPaymentCount: pendingPayments._count._all,
         };
+        if (user?.role === client_1.UserRole.RECEPTIONIST) {
+            return { ...result, staff: 0, services: 0, categories: 0, revenueTodayKobo: 0 };
+        }
+        return result;
     }
 };
 exports.DashboardService = DashboardService;
