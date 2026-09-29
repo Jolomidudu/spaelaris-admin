@@ -44,13 +44,24 @@ __decorate([
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "phone", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateStaffDto.prototype, "displayTitle", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(68000),
+    __metadata("design:type", String)
+], CreateStaffDto.prototype, "photoUrl", void 0);
+__decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MinLength)(1),
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "locationSlug", void 0);
 __decorate([
     (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.ArrayMaxSize)(100),
+    (0, class_validator_1.ArrayMaxSize)(4),
     (0, class_validator_1.ArrayUnique)(),
     (0, class_validator_1.IsString)({ each: true }),
     __metadata("design:type", Array)
@@ -108,11 +119,52 @@ class UpdateStaffServicesDto {
 }
 __decorate([
     (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.ArrayMaxSize)(100),
+    (0, class_validator_1.ArrayMaxSize)(4),
     (0, class_validator_1.ArrayUnique)(),
     (0, class_validator_1.IsString)({ each: true }),
     __metadata("design:type", Array)
 ], UpdateStaffServicesDto.prototype, "serviceSlugs", void 0);
+class UpdateStaffPhotoDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(68000),
+    __metadata("design:type", String)
+], UpdateStaffPhotoDto.prototype, "photoUrl", void 0);
+class UpdateStaffProfileDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], UpdateStaffProfileDto.prototype, "firstName", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], UpdateStaffProfileDto.prototype, "lastName", void 0);
+__decorate([
+    (0, class_validator_1.IsEmail)(),
+    __metadata("design:type", String)
+], UpdateStaffProfileDto.prototype, "email", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], UpdateStaffProfileDto.prototype, "phone", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateStaffProfileDto.prototype, "locationSlug", void 0);
+__decorate([
+    (0, class_validator_1.IsIn)([client_1.UserRole.MANAGER, client_1.UserRole.RECEPTIONIST, client_1.UserRole.THERAPIST]),
+    __metadata("design:type", String)
+], UpdateStaffProfileDto.prototype, "role", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], UpdateStaffProfileDto.prototype, "displayTitle", void 0);
 let StaffController = class StaffController {
     constructor(staffService) {
         this.staffService = staffService;
@@ -131,6 +183,15 @@ let StaffController = class StaffController {
     }
     updateServices(id, body) {
         return this.staffService.updateServices(id, body.serviceSlugs);
+    }
+    updatePhoto(id, body) {
+        return this.staffService.updatePhoto(id, body.photoUrl);
+    }
+    updateProfile(id, body) {
+        return this.staffService.updateProfile(id, body);
+    }
+    remove(id) {
+        return this.staffService.remove(id);
     }
 };
 exports.StaffController = StaffController;
@@ -171,6 +232,29 @@ __decorate([
     __metadata("design:paramtypes", [String, UpdateStaffServicesDto]),
     __metadata("design:returntype", void 0)
 ], StaffController.prototype, "updateServices", null);
+__decorate([
+    (0, common_1.Patch)(':id/photo'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateStaffPhotoDto]),
+    __metadata("design:returntype", void 0)
+], StaffController.prototype, "updatePhoto", null);
+__decorate([
+    (0, common_1.Patch)(':id/profile'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateStaffProfileDto]),
+    __metadata("design:returntype", void 0)
+], StaffController.prototype, "updateProfile", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], StaffController.prototype, "remove", null);
 exports.StaffController = StaffController = __decorate([
     (0, common_1.Controller)('staff'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),

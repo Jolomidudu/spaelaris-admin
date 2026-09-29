@@ -19,6 +19,9 @@ let StaffService = class StaffService {
         this.prisma = prisma;
     }
     async create(data) {
+        if (data.serviceSlugs.length > 4) {
+            throw new common_1.BadRequestException('A therapist can be assigned a maximum of four services');
+        }
         const location = await this.prisma.location.findUnique({ where: { slug: data.locationSlug } });
         if (!location) {
             throw new common_1.BadRequestException('Location not found');
@@ -31,7 +34,8 @@ let StaffService = class StaffService {
             throw new common_1.BadRequestException('One or more services were not found');
         }
         const role = data.role ?? client_1.UserRole.THERAPIST;
-        if (role !== client_1.UserRole.THERAPIST && !data.initialPassword) {
+        const passwordlessSubCoreTitle = role === client_1.UserRole.RECEPTIONIST && ['Cleaner', 'Security', 'Maintenance', 'Spa-Attendant'].includes(data.displayTitle ?? '');
+        if (role !== client_1.UserRole.THERAPIST && !passwordlessSubCoreTitle && !data.initialPassword) {
             throw new common_1.BadRequestException('An initial password is required for admin staff accounts');
         }
         const existingUser = await this.prisma.user.findUnique({ where: { email: data.email.trim().toLowerCase() } });
@@ -52,6 +56,8 @@ let StaffService = class StaffService {
                 staffProfile: {
                     create: {
                         locationId: location.id,
+                        displayTitle: data.displayTitle?.trim() || undefined,
+                        photoUrl: data.photoUrl || undefined,
                         services: {
                             create: services.map((service) => ({ serviceId: service.id })),
                         },
@@ -112,6 +118,9 @@ let StaffService = class StaffService {
         });
     }
     async updateServices(staffProfileId, serviceSlugs) {
+        if (serviceSlugs.length > 4) {
+            throw new common_1.BadRequestException('A therapist can be assigned a maximum of four services');
+        }
         const profile = await this.prisma.staffProfile.findUnique({
             where: { id: staffProfileId },
             select: { id: true, user: { select: { role: true } } },
@@ -145,6 +154,57 @@ let StaffService = class StaffService {
             select: { service: { select: { id: true, name: true, slug: true } } },
         });
     }
+    updatePhoto(staffProfileId, photoUrl) {
+        return this.prisma.staffProfile.update({
+            where: { id: staffProfileId },
+            data: { photoUrl },
+            select: { id: true, photoUrl: true },
+        });
+    }
+    async updateProfile(staffProfileId, data) {
+        const profile = await this.prisma.staffProfile.findUnique({
+            where: { id: staffProfileId },
+            select: { userId: true },
+        });
+        if (!profile)
+            throw new common_1.BadRequestException('Staff profile was not found');
+        const location = await this.prisma.location.findUnique({ where: { slug: data.locationSlug } });
+        if (!location)
+            throw new common_1.BadRequestException('Location not found');
+        await this.prisma.$transaction([
+            this.prisma.user.update({
+                where: { id: profile.userId },
+                data: {
+                    firstName: data.firstName.trim(),
+                    lastName: data.lastName.trim(),
+                    email: data.email.trim().toLowerCase(),
+                    phone: data.phone?.trim() || null,
+                    role: data.role,
+                },
+            }),
+            this.prisma.staffProfile.update({
+                where: { id: staffProfileId },
+                data: { locationId: location.id, displayTitle: data.displayTitle.trim() },
+            }),
+        ]);
+        return this.prisma.staffProfile.findUnique({
+            where: { id: staffProfileId },
+            select: { id: true, displayTitle: true, user: { select: { id: true, role: true } } },
+        });
+    }
+    async remove(staffProfileId) {
+        const profile = await this.prisma.staffProfile.findUnique({
+            where: { id: staffProfileId },
+            select: { userId: true },
+        });
+        if (!profile)
+            throw new common_1.BadRequestException('Staff profile was not found');
+        return this.prisma.user.update({
+            where: { id: profile.userId },
+            data: { status: 'SUSPENDED' },
+            select: { id: true, status: true },
+        });
+    }
     list() {
         return this.prisma.staffProfile.findMany({
             where: {
@@ -159,6 +219,7 @@ let StaffService = class StaffService {
             select: {
                 id: true,
                 bio: true,
+                displayTitle: true,
                 photoUrl: true,
                 isBookable: true,
                 availability: {

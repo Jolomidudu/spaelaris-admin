@@ -1,42 +1,112 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/.idea
+# =========================================================
+# Dependencies
+# =========================================================
 /node_modules
+**/node_modules
+
+
+
+# Yarn
 /.pnp
-.pnp.js
-.yarn/install-state.gz
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# testing
-/coverage
+# =========================================================
+# Environment variables
+# =========================================================
+.env
+.env.*
+!.env.example
 
-# next.js
+# =========================================================
+# Next.js
+# =========================================================
 /.next/
 /out/
+/build/
 
-# production
-/build
+# =========================================================
+# Backend build output
+# =========================================================
+/apps/api/dist/
 
-# misc
-.DS_Store
-*.pem
+# =========================================================
+# TypeScript build/cache files
+# =========================================================
+*.tsbuildinfo
+next-env.d.ts
 
-# debug
+# =========================================================
+# Testing
+# =========================================================
+/coverage
+
+# =========================================================
+# IDE / Editors
+# =========================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# =========================================================
+# Vercel
+# =========================================================
+.vercel
+
+# =========================================================
+# Debug logs
+# =========================================================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
 
-# local env files
+# =========================================================
+# OS files
+# =========================================================
+.DS_Store
+Thumbs.db
+desktop.ini
 
-.env
-.env.local
-.env.development
-.env.production
-.env*.local
+# =========================================================
+# Certificates / private keys
+# =========================================================
+*.pem
+*.key
+*.crt
 
-# vercel
-.vercel
+# =========================================================
+# Local / unwanted image files
+# These remain on your computer but are NOT committed
+# =========================================================
+/addone.png
+/aira.png
+/airb.png
+/appheader.png
+/banner.png
+/booking.png
+/core.png
+/daisy.png
+/error.png
+/forma.png
+/formb.png
+/formlayout.png
+/old.png
+/oldy.png
+/therapistadd.png
+/infomy.txt
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# =========================================================
+# Unwanted brand images
+# =========================================================
+/public/images/brand/apple.svg
+/public/images/brand/facebook.svg
+/public/images/brand/google.svg
+/public/images/brand/instagram.svg
+/public/images/brand/youtube.svg
