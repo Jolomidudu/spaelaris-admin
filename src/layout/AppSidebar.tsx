@@ -3,20 +3,21 @@ import React, { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import {
+  Bed,
+  CalendarDays,
+  CalendarHeart,
+  ChartNoAxesCombined,
+  CreditCard,
+  Gift,
+  ShieldUser,
+  SquareChartGantt,
+  SquareText,
+  Users,
+} from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { getStoredRoleSnapshot, subscribeToAuthChanges } from "../lib/auth";
-import {
-  BoxCubeIcon,
-  CalenderIcon,
-  GridIcon,
-  HorizontaLDots,
-  ListIcon,
-  PageIcon,
-  PieChartIcon,
-  PlugInIcon,
-  TableIcon,
-  UserCircleIcon,
-} from "../icons/index";
+import { HorizontaLDots } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 
 type NavItem = {
@@ -27,60 +28,60 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   {
-    icon: <GridIcon />,
+    icon: <SquareChartGantt color="#6f7f3f" />,
     name: "Overview",
     path: "/",
   },
   {
-    icon: <CalenderIcon />,
+    icon: <CalendarDays color="#6f7f3f" />,
     name: "Appointments",
     path: "/appointments",
   },
   {
-    icon: <UserCircleIcon />,
+    icon: <Users color="#344054" />,
     name: "Staff & Therapists",
     path: "/staff",
   },
   {
     name: "Services",
-    icon: <ListIcon />,
+    icon: <SquareText color="#6f7f3f"/>,
     path: "/services",
   },
   {
     name: "Customers",
-    icon: <TableIcon />,
+    icon: <Users color="#6f7f3f" />,
     path: "/customers",
   },
   {
-    name: "Rooms &Locations",
-    icon: <PageIcon />,
+    name: "Rooms",
+    icon: <Bed color="#6f7f3f" />,
     path: "/rooms",
   },
 ];
 
 const othersItems: NavItem[] = [
   {
-    icon: <PieChartIcon />,
+    icon: <ChartNoAxesCombined color="#6f7f3f" />,
     name: "Analytics",
     path: "/line-chart",
   },
   {
-    icon: <BoxCubeIcon />,
+    icon: <Gift color="#6f7f3f" />,
     name: "Packages",
     path: "/packages",
   },
   {
-    icon: <BoxCubeIcon />,
+    icon: <CalendarHeart color="#6f7f3f" />,
     name: "Memberships",
     path: "/memberships",
   },
   {
-    icon: <BoxCubeIcon />,
+    icon: <CreditCard color="#6f7f3f" />,
     name: "Payments",
     path: "/payments",
   },
   {
-    icon: <PlugInIcon />,
+    icon: <ShieldUser />,
     name: "My profile",
     path: "/profile",
   },
