@@ -67,16 +67,48 @@ let AppointmentsService = class AppointmentsService {
         });
     }
     async create(data) {
-        const phoneDigits = data.customerPhone.trim();
-        if (!/^\d{10}$/.test(phoneDigits))
-            throw new common_1.BadRequestException('Enter exactly 10 Nigerian phone digits');
-        const [customer, service, location] = await Promise.all([
-            this.prisma.customer.findFirst({ where: { phone: { in: [`0${phoneDigits}`, phoneDigits, `+234${phoneDigits}`, `234${phoneDigits}`] } } }),
-            this.prisma.service.findUnique({ where: { slug: data.serviceSlug } }),
+        const normalizedPhone = data.customerPhone.trim();
+        if (!/^\+\d{7,15}$/.test(normalizedPhone))
+            throw new common_1.BadRequestException('Enter a valid phone number with its country calling code');
+        const phoneDigits = normalizedPhone.replace(/\D/g, '');
+        const isNigerianNumber = normalizedPhone.startsWith('+234');
+        const localNigerianDigits = isNigerianNumber ? phoneDigits.slice(3) : '';
+        if (isNigerianNumber && localNigerianDigits.length !== 10) {
+            throw new common_1.BadRequestException('Enter exactly 10 Nigerian phone digits after +234');
+        }
+        const requestedServiceSlugs = data.serviceSlugs?.length
+            ? data.serviceSlugs
+            : data.serviceSlug
+                ? [data.serviceSlug]
+                : [];
+        if (requestedServiceSlugs.length < 1 || requestedServiceSlugs.length > 3) {
+            throw new common_1.BadRequestException('Select between one and three services');
+        }
+        if (new Set(requestedServiceSlugs).size !== requestedServiceSlugs.length) {
+            throw new common_1.BadRequestException('Selected services must be unique');
+        }
+        const [customer, services, location] = await Promise.all([
+            this.prisma.customer.findFirst({
+                where: {
+                    phone: {
+                        in: isNigerianNumber
+                            ? [`0${localNigerianDigits}`, localNigerianDigits, `234${localNigerianDigits}`, normalizedPhone]
+                            : [normalizedPhone, phoneDigits],
+                    },
+                },
+            }),
+            this.prisma.service.findMany({
+                where: { slug: { in: requestedServiceSlugs }, isActive: true, category: { isActive: true } },
+                select: { id: true, slug: true, name: true, durationMinutes: true, priceKobo: true },
+            }),
             this.prisma.location.findUnique({ where: { slug: data.locationSlug } }),
         ]);
-        if (!service || !service.isActive)
-            throw new common_1.BadRequestException('Service was not found');
+        if (services.length !== requestedServiceSlugs.length)
+            throw new common_1.BadRequestException('One or more selected services were not found');
+        if (services.some((service) => service.durationMinutes === null)) {
+            throw new common_1.BadRequestException('Every selected service needs a duration before it can be booked');
+        }
+        const totalDurationMinutes = services.reduce((total, service) => total + (service.durationMinutes ?? 0), 0);
         if (!location || !location.isActive)
             throw new common_1.BadRequestException('Location was not found');
         let therapistUser = null;
@@ -116,8 +148,8 @@ let AppointmentsService = class AppointmentsService {
         if (therapistProfile && therapistProfile.locationId !== location.id) {
             throw new common_1.BadRequestException('Therapist is not assigned to this location');
         }
-        if (therapistProfile && !therapistProfile.services.some(({ serviceId }) => serviceId === service.id)) {
-            throw new common_1.BadRequestException('Therapist is not assigned to this service');
+        if (therapistProfile && !services.every((service) => therapistProfile.services.some(({ serviceId }) => serviceId === service.id))) {
+            throw new common_1.BadRequestException('Therapist is not assigned to every selected service');
         }
         const room = data.roomName
             ? await this.prisma.room.findUnique({ where: { locationId_name: { locationId: location.id, name: data.roomName.trim() } } })
@@ -128,6 +160,9 @@ let AppointmentsService = class AppointmentsService {
         const endsAt = new Date(data.endsAt);
         if (endsAt <= startsAt)
             throw new common_1.BadRequestException('Appointment end must be after its start');
+        if (Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000) !== totalDurationMinutes) {
+            throw new common_1.BadRequestException('Appointment time must match the combined duration of the selected services');
+        }
         const conflicts = await Promise.all([
             therapistUser
                 ? this.prisma.appointment.findFirst({
@@ -163,7 +198,7 @@ let AppointmentsService = class AppointmentsService {
             const savedCustomer = customer
                 ? await transaction.customer.update({ where: { id: customer.id }, data: customerData })
                 : await transaction.customer.create({
-                    data: { ...customerData, phone: `0${phoneDigits}` },
+                    data: { ...customerData, phone: isNigerianNumber ? `0${localNigerianDigits}` : normalizedPhone },
                 });
             return transaction.appointment.create({
                 data: {
@@ -176,12 +211,12 @@ let AppointmentsService = class AppointmentsService {
                     status: data.status || client_1.AppointmentStatus.PENDING,
                     notes: data.notes?.trim() || data.customerNote?.trim() || undefined,
                     services: {
-                        create: {
+                        create: services.map((service) => ({
                             serviceId: service.id,
                             name: service.name,
-                            durationMinutes: service.durationMinutes ?? Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000),
+                            durationMinutes: service.durationMinutes,
                             unitPriceKobo: service.priceKobo,
-                        },
+                        })),
                     },
                 },
                 select: { id: true, startsAt: true, endsAt: true, status: true },

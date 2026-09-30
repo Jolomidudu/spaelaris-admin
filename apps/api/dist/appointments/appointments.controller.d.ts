@@ -5,7 +5,8 @@ declare class CreateAppointmentDto {
     customerFirstName: string;
     customerLastName: string;
     customerNote?: string;
-    serviceSlug: string;
+    serviceSlug?: string;
+    serviceSlugs?: string[];
     locationSlug: string;
     therapistEmail?: string;
     therapistProfileId?: string;

@@ -56,14 +56,19 @@ type AppointmentSlot = {
 };
 
 const ANY_ROOM_VALUE = "__any_room__";
+
+function ShoppingCartIcon() {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 1.9-1.4L22 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>;
+}
+
 const PHONE_COUNTRY_CODES = [
-  { code: "+234", country: "Nigeria" },
-  { code: "+1", country: "United States / Canada" },
-  { code: "+44", country: "United Kingdom" },
-  { code: "+27", country: "South Africa" },
-  { code: "+254", country: "Kenya" },
-  { code: "+233", country: "Ghana" },
-  { code: "+971", country: "United Arab Emirates" },
+  "+234",
+  "+1",
+  "+44",
+  "+27",
+  "+254",
+  "+233",
+  "+971",
 ];
 
 function getDateKey(date: Date) {
@@ -93,6 +98,19 @@ function formatBookingDate(value: string) {
     day: "numeric",
     month: "short",
   }).format(new Date(`${value}T12:00:00+01:00`));
+}
+
+function maxLocalPhoneDigits(countryCode: string) {
+  if (countryCode === "+234") return 10;
+  return Math.max(1, 15 - countryCode.replace(/\D/g, "").length);
+}
+
+function formatDuration(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes} min`;
+  if (minutes === 0) return `${hours} hr`;
+  return `${hours} hr ${minutes} min`;
 }
 
 function getCalendarLevel(status: string) {
@@ -132,7 +150,7 @@ const Calendar: React.FC = () => {
   const [customerPhoneCountryCode, setCustomerPhoneCountryCode] = useState("+234");
   const [customerPhoneDigits, setCustomerPhoneDigits] = useState("");
   const [customerNote, setCustomerNote] = useState("");
-  const [eventService, setEventService] = useState("");
+  const [eventServices, setEventServices] = useState<string[]>([]);
   const [eventServiceCategory, setEventServiceCategory] = useState("");
   const [eventTherapist, setEventTherapist] = useState("");
   const [eventRoom, setEventRoom] = useState("");
@@ -338,7 +356,7 @@ const Calendar: React.FC = () => {
             customerFirstName,
             customerLastName,
             customerNote: customerNote.trim() || undefined,
-            serviceSlug: eventService,
+            serviceSlugs: eventServices,
             locationSlug: eventLocation,
             therapistProfileId: eventTherapist || undefined,
             roomName: selectedRoom?.name || undefined,
@@ -363,7 +381,7 @@ const Calendar: React.FC = () => {
           customer: `${customerFirstName.trim()} ${customerLastName.trim()}`,
           phone: `${customerPhoneCountryCode} ${customerPhoneDigits}`,
           category: appointmentOptions.categories.find((category) => category.slug === eventServiceCategory)?.name ?? "",
-          service: selectedService?.name ?? "",
+          service: selectedServices.map((service) => service.name).join(", "),
           amount: new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalPrice / 100),
           note: customerNote.trim(),
           location: appointmentOptions.locations.find((location) => location.slug === eventLocation)?.name ?? "",
@@ -394,7 +412,7 @@ const Calendar: React.FC = () => {
     setCustomerPhoneCountryCode("+234");
     setCustomerPhoneDigits("");
     setCustomerNote("");
-    setEventService("");
+    setEventServices([]);
     setEventServiceCategory(appointmentOptions.categories[0]?.slug ?? "");
     setEventTherapist("");
     setEventRoom("");
@@ -410,16 +428,17 @@ const Calendar: React.FC = () => {
   };
 
   const availableServices = appointmentOptions.services.filter((service) => service.category.slug === eventServiceCategory);
+  const selectedServices = appointmentOptions.services.filter((service) => eventServices.includes(service.slug));
   const availableTherapists = appointmentOptions.therapists.filter((therapist) =>
-    therapist.locationSlug === eventLocation && (!eventService || therapist.serviceSlugs.includes(eventService)),
+    therapist.locationSlug === eventLocation && eventServices.every((serviceSlug) => therapist.serviceSlugs.includes(serviceSlug)),
   );
   const availableRooms = appointmentOptions.rooms.filter((room) => room.locationSlug === eventLocation);
-  const selectedService = appointmentOptions.services.find((service) => service.slug === eventService);
   const selectedRoom = eventRoom === ANY_ROOM_VALUE
     ? appointmentOptions.rooms.find((room) => room.id === selectedSlot?.availableRooms?.[0]?.id)
     : appointmentOptions.rooms.find((room) => room.id === eventRoom);
   const selectedTherapist = appointmentOptions.therapists.find((therapist) => therapist.staffProfileId === eventTherapist);
-  const totalPrice = selectedService?.priceKobo ?? 0;
+  const totalPrice = selectedServices.reduce((total, service) => total + service.priceKobo, 0);
+  const totalDurationMinutes = selectedServices.reduce((total, service) => total + (service.durationMinutes ?? 0), 0);
   const dateChoices = Array.from({ length: 21 }, (_, index) => {
     const date = new Date();
     date.setDate(date.getDate() + index);
@@ -434,7 +453,7 @@ const Calendar: React.FC = () => {
         : (slot as AppointmentSlot & { availableRoomCount?: number }).availableRoomCount !== 0;
     const [hour, minute] = formatBookingTime(slot.startsAt).split(":").map(Number);
     const startMinute = hour * 60 + minute;
-    return selectedRoomIsAvailable && startMinute >= 9 * 60 && startMinute + (selectedService?.durationMinutes ?? 0) <= 18 * 60;
+    return selectedRoomIsAvailable && startMinute >= 9 * 60 && startMinute + totalDurationMinutes <= 18 * 60;
   });
 
   async function loadAvailability(date: string) {
@@ -443,7 +462,7 @@ const Calendar: React.FC = () => {
     setSlotError("");
     setIsLoadingSlots(true);
     try {
-      const params = new URLSearchParams({ locationSlug: eventLocation, date, serviceSlugs: eventService });
+      const params = new URLSearchParams({ locationSlug: eventLocation, date, serviceSlugs: eventServices.join(",") });
       const response = await fetch(`${API_BASE_URL}/api/public/booking/availability?${params.toString()}`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.message || "Unable to load available times.");
@@ -455,19 +474,33 @@ const Calendar: React.FC = () => {
     }
   }
 
+  function toggleAppointmentService(serviceSlug: string) {
+    if (!eventServices.includes(serviceSlug) && eventServices.length >= 3) {
+      setSaveError("Choose up to three services for one booking.");
+      return;
+    }
+    setSaveError("");
+    setSelectedSlot(null);
+    setEventTherapist("");
+    setEventServices((current) => current.includes(serviceSlug)
+      ? current.filter((slug) => slug !== serviceSlug)
+      : [...current, serviceSlug]);
+  }
+
   function goToNextStep() {
     setSaveError("");
+    const totalPhoneDigits = customerPhoneCountryCode.replace(/\D/g, "").length + customerPhoneDigits.length;
     const validPhone = customerPhoneCountryCode === "+234"
       ? /^\d{10}$/.test(customerPhoneDigits)
-      : /^\d{7,15}$/.test(customerPhoneDigits);
+      : totalPhoneDigits >= 7 && totalPhoneDigits <= 15;
     if (bookingStep === 1 && (!customerFirstName.trim() || !customerLastName.trim() || !validPhone || !eventLocation)) {
       setSaveError(customerPhoneCountryCode === "+234"
         ? "Enter the guest's name, a 10-digit Nigerian phone number, and a location."
         : "Enter the guest's name, a valid phone number, and a location.");
       return;
     }
-    if (bookingStep === 2 && (!eventServiceCategory || !eventService || !eventTherapist || !eventRoom)) {
-      setSaveError("Select a category, service, therapist, and room to continue.");
+    if (bookingStep === 2 && (!eventServiceCategory || eventServices.length === 0 || !eventTherapist || !eventRoom)) {
+      setSaveError("Select a category, at least one service, a therapist, and a room to continue.");
       return;
     }
     if (bookingStep === 3 && !selectedSlot) {
@@ -504,7 +537,7 @@ const Calendar: React.FC = () => {
           eventContent={renderEventContent}
           customButtons={{
             addEventButton: {
-              text: "New Spaelaris Booking +",
+              text: "New Booking +",
               click: handleNewAppointment,
             },
           }}
@@ -543,14 +576,30 @@ const Calendar: React.FC = () => {
                 {bookingStep === 1 && <div className="grid gap-5 sm:grid-cols-2">
                   <div><label className="mb-1.5 block text-sm font-medium text-brand-800">Customer first name</label><input autoFocus required value={customerFirstName} onChange={(event) => setCustomerFirstName(event.target.value)} autoComplete="given-name" className="h-11 w-full rounded-lg border border-brand-200 bg-white px-4 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden" /></div>
                   <div><label className="mb-1.5 block text-sm font-medium text-brand-800">Customer last name</label><input required value={customerLastName} onChange={(event) => setCustomerLastName(event.target.value)} autoComplete="family-name" className="h-11 w-full rounded-lg border border-brand-200 bg-white px-4 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden" /></div>
-                  <div><label className="mb-1.5 block text-sm font-medium text-brand-800">Customer phone</label><div className="flex h-11 overflow-hidden rounded-lg border border-brand-200 bg-white"><select aria-label="Customer phone country code" value={customerPhoneCountryCode} onChange={(event) => { setCustomerPhoneCountryCode(event.target.value); setCustomerPhoneDigits(""); }} className="max-w-44 border-r border-brand-200 bg-brand-50 px-2 text-xs font-medium text-brand-800 focus:outline-hidden">{PHONE_COUNTRY_CODES.map(({ code, country }) => <option key={code} value={code}>{country} {code}</option>)}</select><input required type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={customerPhoneCountryCode === "+234" ? 10 : 15} pattern={customerPhoneCountryCode === "+234" ? "[0-9]{10}" : "[0-9]{7,15}"} value={customerPhoneDigits} onChange={(event) => { const digits = event.target.value.replace(/\D/g, ""); setCustomerPhoneDigits(digits.slice(0, customerPhoneCountryCode === "+234" ? 10 : 15)); }} placeholder={customerPhoneCountryCode === "+234" ? "8012345678" : "Phone number"} className="min-w-0 flex-1 bg-transparent px-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-hidden" /></div><p className="mt-1 text-xs text-gray-600">{customerPhoneCountryCode === "+234" ? "Enter exactly 10 digits." : "Enter 7 to 15 digits."}</p></div>
+                  <div><label className="mb-1.5 block text-sm font-medium text-brand-800">Customer phone</label><div className="flex h-11 overflow-hidden rounded-lg border border-brand-200 bg-white"><select aria-label="Customer phone country code" value={customerPhoneCountryCode} onChange={(event) => { setCustomerPhoneCountryCode(event.target.value); setCustomerPhoneDigits(""); }} className="max-w-32 border-r border-brand-200 bg-brand-50 px-2 text-sm font-medium text-brand-800 focus:outline-hidden">{PHONE_COUNTRY_CODES.map((code) => <option key={code} value={code}>{code}</option>)}</select><input required type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={maxLocalPhoneDigits(customerPhoneCountryCode)} pattern={customerPhoneCountryCode === "+234" ? "[0-9]{10}" : "[0-9]+"} value={customerPhoneDigits} onChange={(event) => { const digits = event.target.value.replace(/\D/g, ""); setCustomerPhoneDigits(digits.slice(0, maxLocalPhoneDigits(customerPhoneCountryCode))); }} placeholder={customerPhoneCountryCode === "+234" ? "8012345678" : "Phone number"} className="min-w-0 flex-1 bg-transparent px-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-hidden" /></div><p className="mt-1 text-xs text-gray-600">{customerPhoneCountryCode === "+234" ? "Enter exactly 10 digits." : "Enter a valid local number."}</p></div>
                   <div><label className="mb-1.5 block text-sm font-medium text-brand-800">Location</label><select required value={eventLocation} onChange={(event) => { setEventLocation(event.target.value); setEventTherapist(""); setEventRoom(""); setSelectedSlot(null); }} disabled={isLoadingOptions} className="h-11 w-full rounded-lg border border-brand-200 bg-white px-4 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden"><option value="">{isLoadingOptions ? "Loading locations..." : "Select location"}</option>{appointmentOptions.locations.map((location) => <option key={location.id} value={location.slug}>{location.name}</option>)}</select></div>
                 </div>}
 
                 {bookingStep === 2 && <div className="grid gap-5 sm:grid-cols-2">
-                  <div><label className="mb-1.5 block text-sm font-medium text-brand-800">Service category</label><select required value={eventServiceCategory} onChange={(event) => { setEventServiceCategory(event.target.value); setEventService(""); setEventTherapist(""); setSelectedSlot(null); }} disabled={isLoadingOptions} className="h-11 w-full rounded-lg border border-brand-200 bg-white px-4 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden"><option value="">Select category</option>{appointmentOptions.categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></div>
-                  <div><label className="mb-1.5 block text-sm font-medium text-brand-800">Service</label><select required value={eventService} onChange={(event) => { setEventService(event.target.value); setEventTherapist(""); setSelectedSlot(null); }} disabled={!eventServiceCategory || isLoadingOptions} className="h-11 w-full rounded-lg border border-brand-200 bg-white px-4 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden"><option value="">Select service</option>{availableServices.map((service) => <option key={service.id} value={service.slug}>{service.name}{service.durationMinutes ? ` · ${service.durationMinutes} min` : ""}</option>)}</select></div>
-                  <div><label className="mb-1.5 block text-sm font-medium text-brand-800">Therapist</label><select required value={eventTherapist} onChange={(event) => { setEventTherapist(event.target.value); setSelectedSlot(null); }} disabled={!eventLocation || !eventService || isLoadingOptions} className="h-11 w-full rounded-lg border border-brand-200 bg-white px-4 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden"><option value="">Select therapist</option>{availableTherapists.map((therapist) => <option key={therapist.staffProfileId} value={therapist.staffProfileId}>{therapist.firstName} {therapist.lastName}</option>)}</select>{eventService && availableTherapists.length === 0 && <p className="mt-1 text-xs text-[#9a5637]">No therapist at this location is assigned to the selected service.</p>}</div>
+                  <div className="sm:col-span-2"><label className="mb-1.5 block text-sm font-medium text-brand-800">Service category</label><select required value={eventServiceCategory} onChange={(event) => { setEventServiceCategory(event.target.value); setEventServices([]); setEventTherapist(""); setSelectedSlot(null); }} disabled={isLoadingOptions} className="h-11 w-full rounded-lg border border-brand-200 bg-white px-4 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden"><option value="">Select category</option>{appointmentOptions.categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></div>
+                  <div className="sm:col-span-2">
+                    <div className="mb-1.5 flex items-center justify-between gap-3"><label className="text-sm font-medium text-brand-800">Services in this category</label><span className="text-xs text-gray-600">{eventServices.length} selected services (up to 3)</span></div>
+                    <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border border-brand-200 bg-white p-2">
+                      {availableServices.map((service) => {
+                        const isSelected = eventServices.includes(service.slug);
+                        const noDuration = service.durationMinutes === null;
+                        const limitReached = eventServices.length >= 3 && !isSelected;
+                        return <label key={service.id} className={`flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm ${isSelected ? "bg-brand-50 text-brand-900" : "text-gray-800 hover:bg-gray-50"} ${(noDuration || limitReached) && !isSelected ? "cursor-not-allowed opacity-50" : ""}`}>
+                          <input type="checkbox" checked={isSelected} disabled={noDuration || limitReached} onChange={() => toggleAppointmentService(service.slug)} className="h-4 w-4 accent-brand-600" />
+                          <span className="min-w-0 flex-1">{service.name}{noDuration && <span className="ml-2 text-xs text-gray-500">Duration not set</span>}</span>
+                          <span className="shrink-0 text-xs text-gray-600">{service.durationMinutes ? `${service.durationMinutes} min` : ""}</span>
+                          <span className="shrink-0 font-medium">{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(service.priceKobo / 100)}</span>
+                        </label>;
+                      })}
+                      {availableServices.length === 0 && <p className="px-3 py-4 text-sm text-gray-500">No services in this category.</p>}
+                    </div>
+                  </div>
+                  <div><label className="mb-1.5 block text-sm font-medium text-brand-800">Therapist</label><select required value={eventTherapist} onChange={(event) => { setEventTherapist(event.target.value); setSelectedSlot(null); }} disabled={!eventLocation || eventServices.length === 0 || isLoadingOptions} className="h-11 w-full rounded-lg border border-brand-200 bg-white px-4 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden"><option value="">Select therapist</option>{availableTherapists.map((therapist) => <option key={therapist.staffProfileId} value={therapist.staffProfileId}>{therapist.firstName} {therapist.lastName}</option>)}</select>{eventServices.length > 0 && availableTherapists.length === 0 && <p className="mt-1 text-xs text-[#9a5637]">No therapist at this location is assigned to every selected service.</p>}</div>
                   <div><label className="mb-1.5 block text-sm font-medium text-brand-800">Room</label><select required value={eventRoom} onChange={(event) => { setEventRoom(event.target.value); setSelectedSlot(null); }} disabled={!eventLocation || isLoadingOptions} className="h-11 w-full rounded-lg border border-brand-200 bg-white px-4 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden"><option value="">Select room</option><option value={ANY_ROOM_VALUE}>Any room</option>{availableRooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}</select></div>
                 </div>}
 
@@ -559,13 +608,13 @@ const Calendar: React.FC = () => {
                   <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-3" aria-label="Available dates">
                     {dateChoices.map((date) => {
                       const [weekday, day, month] = formatBookingDate(date).split(" ");
-                      return <button key={date} type="button" onClick={() => void loadAvailability(date)} className={`flex h-28 w-[88px] shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-xl border transition ${selectedDate === date ? "border-brand-600 bg-brand-600 text-white" : "border-brand-200 bg-white text-brand-800 hover:border-brand-500"}`}><span className="text-sm">{weekday}</span><strong className="text-2xl">{day}</strong><span className="text-sm">{month}</span></button>;
+                      return <button key={date} type="button" onClick={() => void loadAvailability(date)} className={`flex h-[84px] w-[66px] shrink-0 snap-start flex-col items-center justify-center gap-0.5 rounded-xl border transition sm:h-28 sm:w-[88px] sm:gap-1 ${selectedDate === date ? "border-brand-600 bg-brand-600 text-white" : "border-brand-200 bg-white text-brand-800 hover:border-brand-500"}`}><span className="text-[11px] sm:text-sm">{weekday}</span><strong className="text-lg sm:text-2xl">{day}</strong><span className="text-[11px] sm:text-sm">{month}</span></button>;
                     })}
                   </div>
                   <div className="mt-5">
                     <h3 className="text-lg font-semibold text-brand-900">Pick a time</h3>
                     {slotError && <p role="alert" className="mt-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{slotError}</p>}
-                    {isLoadingSlots ? <p className="mt-3 text-sm text-gray-600">Loading available times...</p> : visibleTimeSlots.length > 0 ? <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">{visibleTimeSlots.map((slot) => <button key={`${slot.startsAt}-${slot.therapistId}`} type="button" onClick={() => setSelectedSlot(slot)} className={`flex min-h-14 w-full items-center justify-between rounded-xl border px-4 text-left transition ${selectedSlot?.startsAt === slot.startsAt ? "border-brand-600 bg-brand-600 text-white" : "border-brand-200 bg-white text-brand-900 hover:border-brand-500"}`}><span className="text-base font-semibold">{formatBookingTime(slot.startsAt)}</span><span className="text-xs">{formatBookingTime(slot.endsAt)} end</span></button>)}</div> : <p className="mt-3 rounded-lg bg-brand-25 px-4 py-5 text-sm text-gray-600">{eventService && eventTherapist && eventRoom ? "No matching times between 09:00 and 18:00 on this date." : "Choose a service, therapist, and room first."}</p>}
+                    {isLoadingSlots ? <p className="mt-3 text-sm text-gray-600">Loading available times...</p> : visibleTimeSlots.length > 0 ? <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">{visibleTimeSlots.map((slot) => <button key={`${slot.startsAt}-${slot.therapistId}`} type="button" onClick={() => setSelectedSlot(slot)} className={`flex min-h-14 w-full items-center justify-between rounded-xl border px-4 text-left transition ${selectedSlot?.startsAt === slot.startsAt ? "border-brand-600 bg-brand-600 text-white" : "border-brand-200 bg-white text-brand-900 hover:border-brand-500"}`}><span className="text-base font-semibold">{formatBookingTime(slot.startsAt)}</span><span className="text-xs">{formatBookingTime(slot.endsAt)} end</span></button>)}</div> : <p className="mt-3 rounded-lg bg-brand-25 px-4 py-5 text-sm text-gray-600">{eventServices.length > 0 && eventTherapist && eventRoom ? "No matching times between 09:00 and 18:00 on this date." : "Choose services, a therapist, and a room first."}</p>}
                   </div>
                 </div>}
 
@@ -574,7 +623,7 @@ const Calendar: React.FC = () => {
                 {bookingStep === 5 && <div>
                   <h3 className="text-lg font-semibold text-brand-900">Review booking</h3>
                   <dl className="mt-4 divide-y divide-brand-200 rounded-xl border border-brand-200 bg-white px-4">
-                    {[ ["Guest", `${customerFirstName} ${customerLastName}`], ["Phone", `${customerPhoneCountryCode} ${customerPhoneDigits}`], ["Location", appointmentOptions.locations.find((location) => location.slug === eventLocation)?.name ?? ""], ["Category", appointmentOptions.categories.find((category) => category.slug === eventServiceCategory)?.name ?? ""], ["Treatment", selectedService?.name ?? ""], ["Date", formatBookingDate(selectedDate)], ["Time", selectedSlot ? `${formatBookingTime(selectedSlot.startsAt)} - ${formatBookingTime(selectedSlot.endsAt)}` : ""], ["Therapist", selectedTherapist ? `${selectedTherapist.firstName} ${selectedTherapist.lastName}` : ""], ["Room", selectedRoom?.name ?? ""], ["Amount", new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalPrice / 100)]].map(([label, value]) => <div key={label} className="flex items-start justify-between gap-4 py-3 text-sm"><dt className="text-gray-600">{label}</dt><dd className="text-right font-medium text-brand-900">{value}</dd></div>)}
+                    {[ ["Guest", `${customerFirstName} ${customerLastName}`], ["Phone", `${customerPhoneCountryCode} ${customerPhoneDigits}`], ["Location", appointmentOptions.locations.find((location) => location.slug === eventLocation)?.name ?? ""], ["Category", appointmentOptions.categories.find((category) => category.slug === eventServiceCategory)?.name ?? ""], ["Treatments", selectedServices.map((service) => service.name).join(", ")], ["Total time", formatDuration(totalDurationMinutes)], ["Date", formatBookingDate(selectedDate)], ["Time", selectedSlot ? `${formatBookingTime(selectedSlot.startsAt)} - ${formatBookingTime(selectedSlot.endsAt)}` : ""], ["Therapist", selectedTherapist ? `${selectedTherapist.firstName} ${selectedTherapist.lastName}` : ""], ["Room", selectedRoom?.name ?? ""], ["Amount", new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalPrice / 100)]].map(([label, value]) => <div key={label} className="flex items-start justify-between gap-4 py-3 text-sm"><dt className="text-gray-600">{label}</dt><dd className="text-right font-medium text-brand-900">{value}</dd></div>)}
                     {customerNote.trim() && <div className="py-3 text-sm"><dt className="text-gray-600">Customer note</dt><dd className="mt-1 whitespace-pre-wrap text-brand-900">{customerNote}</dd></div>}
                   </dl>
                 </div>}
@@ -583,9 +632,9 @@ const Calendar: React.FC = () => {
           </div>
 
           <footer className="shrink-0 border-t border-white/50 bg-white/60 px-6 py-4 sm:px-8">
-            {!selectedEvent && bookingStep === 2 && <div className="mb-4 flex items-center justify-between border-b border-brand-200 pb-3 text-sm"><span className="text-gray-600">Selected service</span><span className="font-semibold text-brand-900">{selectedService ? new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalPrice / 100) : "Select a service"}</span></div>}
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-              {selectedEvent ? <><button onClick={closeModal} type="button" className="rounded-lg border border-brand-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-800">Cancel</button><button type="submit" disabled={isSaving} className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60">{isSaving ? "Saving..." : "Save changes"}</button></> : bookingStep === 5 ? <><button onClick={closeModal} type="button" className="rounded-lg border border-brand-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-800">Cancel</button><button type="submit" disabled={isSaving || !selectedSlot} className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60">{isSaving ? "Confirming..." : "Confirm booking"}</button></> : <><button onClick={goToPreviousStep} type="button" disabled={bookingStep === 1} className="rounded-lg border border-brand-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-800 disabled:invisible">Previous</button><button onClick={goToNextStep} type="button" disabled={isLoadingOptions || Boolean(optionsError) || (bookingStep === 3 && (isLoadingSlots || !selectedSlot))} className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">Next</button></>}
+            {!selectedEvent && bookingStep === 2 && <div className="mb-4 border-b border-brand-200 pb-3 text-sm"><div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-gray-600"><ShoppingCartIcon />{eventServices.length} selected services</span><span className="font-semibold text-brand-900">{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalPrice / 100)}</span></div><p className="mt-1 text-right text-xs text-gray-600">Total time: {formatDuration(totalDurationMinutes)}</p></div>}
+            <div className="flex flex-row gap-3 sm:justify-between">
+              {selectedEvent ? <><button onClick={closeModal} type="button" className="w-1/2 rounded-lg border border-brand-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-800 sm:w-auto">Cancel</button><button type="submit" disabled={isSaving} className="w-1/2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60 sm:w-auto">{isSaving ? "Saving..." : "Save changes"}</button></> : bookingStep === 5 ? <><button onClick={closeModal} type="button" className="w-1/2 rounded-lg border border-brand-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-800 sm:w-auto">Cancel</button><button type="submit" disabled={isSaving || !selectedSlot} className="w-1/2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60 sm:w-auto">{isSaving ? "Confirming..." : "Confirm booking"}</button></> : <><button onClick={goToPreviousStep} type="button" disabled={bookingStep === 1} className="w-1/2 rounded-lg border border-brand-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-800 disabled:invisible sm:w-auto">Previous</button><button onClick={goToNextStep} type="button" disabled={isLoadingOptions || Boolean(optionsError) || (bookingStep === 3 && (isLoadingSlots || !selectedSlot))} className="w-1/2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">Next</button></>}
             </div>
           </footer>
         </form>
