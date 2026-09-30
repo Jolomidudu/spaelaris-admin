@@ -142,10 +142,17 @@ function PhoneNumberInput({
     <div>
       <Label>Phone <span className="text-gray-400">(optional)</span></Label>
       <div className="grid grid-cols-[110px_1fr] gap-2">
-        <select aria-label="Country calling code" value={countryCode} onChange={(event) => onCountryCodeChange(event.target.value)} className="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+        <select aria-label="Country calling code" value={countryCode} onChange={(event) => {
+          const nextCountryCode = event.target.value;
+          onCountryCodeChange(nextCountryCode);
+          if (nextCountryCode === "+234" && digits.length > 10) onDigitsChange(digits.slice(0, 10));
+        }} className="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
           {countryCallingCodes.map((code) => <option key={code} value={code}>{code}</option>)}
         </select>
-        <input value={digits} onChange={(event) => onDigitsChange(event.target.value.replace(/\D/g, ""))} placeholder="Phone digits" type="text" inputMode="numeric" autoComplete="tel-national" className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
+        <input value={digits} maxLength={countryCode === "+234" ? 10 : undefined} onChange={(event) => {
+          const nextDigits = event.target.value.replace(/\D/g, "");
+          onDigitsChange(countryCode === "+234" ? nextDigits.slice(0, 10) : nextDigits);
+        }} placeholder="Phone digits" type="text" inputMode="numeric" autoComplete="tel-national" className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
       </div>
     </div>
   );

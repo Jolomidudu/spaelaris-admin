@@ -209,6 +209,55 @@
   }
 }
 
+  .appointment-form [class*="border-[#dfceb5]"],
+  .appointment-form [class*="border-[#d5c3aa]"],
+  .appointment-form [class*="border-[#cdb89b]"],
+  .appointment-form [class*="border-[#eadfce]"],
+  .appointment-form [class*="border-[#dccbb3]"],
+  .appointment-confirmation [class*="border-[#eadfce]"] {
+    border-color: #6f7f3f !important;
+  }
+
+  .appointment-form [class*="divide-[#dfceb5]"] > :not(:last-child),
+  .appointment-form [class*="divide-[#eadfce]"] > :not(:last-child) {
+    border-color: #6f7f3f !important;
+  }
+
+  .appointment-form [class*="text-[#352b20]"],
+  .appointment-form [class*="text-[#514333]"],
+  .appointment-confirmation [class*="text-[#352b20]"],
+  .appointment-confirmation [class*="text-[#514333]"],
+  .appointment-confirmation [class*="text-[#6e5539]"] {
+    color: #3f4a2c !important;
+  }
+
+  .appointment-form [class*="text-[#756451]"],
+  .appointment-confirmation [class*="text-[#756451]"] {
+    color: #606454 !important;
+  }
+
+  .appointment-form [class*="bg-[#8b6844]"],
+  .appointment-form [class*="bg-[#8b6844]"]:hover,
+  .appointment-confirmation [class*="bg-[#8b6844]"],
+  .appointment-confirmation [class*="bg-[#8b6844]"]:hover {
+    background-color: #66703f !important;
+  }
+
+  .appointment-form [class*="border-[#8b6844]"],
+  .appointment-form [class*="hover:border-[#8b6844]"]:hover {
+    border-color: #66703f !important;
+  }
+
+  .appointment-form [class*="bg-[#dccbb3]"],
+  .appointment-form [class*="bg-[#f8f2e9]"],
+  .appointment-confirmation [class*="bg-[#e1d2bb]"] {
+    background-color: #e2e6cd !important;
+  }
+
+  .appointment-confirmation[class*="bg-[#f1e6d5]"] {
+    background-color: #f7f8f2 !important;
+  }
+
 @utility menu-item {
   @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-theme-sm;
 }
