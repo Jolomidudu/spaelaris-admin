@@ -44,10 +44,10 @@ export declare class PublicBookingService {
         endsAt: string;
         notes?: string;
     }): Promise<{
-        id: string;
         startsAt: Date;
         endsAt: Date;
         status: import(".prisma/client").$Enums.AppointmentStatus;
+        id: string;
         location: {
             name: string;
             city: string;

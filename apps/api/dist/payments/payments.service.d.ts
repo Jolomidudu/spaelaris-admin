@@ -13,10 +13,10 @@ export declare class PaymentsService {
         status: import(".prisma/client").$Enums.PaymentStatus;
         amountKobo: number;
         appointment: {
-            id: string;
             startsAt: Date;
             endsAt: Date;
             status: import(".prisma/client").$Enums.AppointmentStatus;
+            id: string;
             location: {
                 name: string;
                 city: string;
@@ -53,26 +53,24 @@ export declare class PaymentsService {
         method?: PaymentMethod;
         status?: PaymentStatus;
     }): Promise<{
-        id: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
-        method: import(".prisma/client").$Enums.PaymentMethod;
-        reference: string;
+        id: string;
         amountKobo: number;
+        reference: string;
+        method: import(".prisma/client").$Enums.PaymentMethod;
         paidAt: Date | null;
     }>;
     update(id: string, status: PaymentStatus): Promise<{
-        id: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
-        method: import(".prisma/client").$Enums.PaymentMethod;
-        reference: string;
+        id: string;
         amountKobo: number;
+        reference: string;
+        method: import(".prisma/client").$Enums.PaymentMethod;
         paidAt: Date | null;
         refundedAt: Date | null;
     }>;
     list(): import(".prisma/client").Prisma.PrismaPromise<{
-        id: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
-        createdAt: Date;
         appointment: {
             startsAt: Date;
             customer: {
@@ -84,10 +82,12 @@ export declare class PaymentsService {
                 name: string;
             }[];
         };
+        id: string;
+        createdAt: Date;
         appointmentId: string;
-        method: import(".prisma/client").$Enums.PaymentMethod;
-        reference: string;
         amountKobo: number;
+        reference: string;
+        method: import(".prisma/client").$Enums.PaymentMethod;
         paidAt: Date | null;
     }[]>;
 }

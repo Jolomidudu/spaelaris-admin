@@ -15,20 +15,20 @@ export declare class StaffService {
         role?: UserRole;
         initialPassword?: string;
     }): Promise<{
-        id: string;
-        email: string;
         firstName: string;
         lastName: string;
+        email: string;
+        id: string;
     }>;
     updateAccess(id: string, data: {
         role: UserRole;
         password: string;
     }): Promise<{
-        id: string;
-        email: string;
         firstName: string;
         lastName: string;
+        email: string;
         role: import(".prisma/client").$Enums.UserRole;
+        id: string;
         status: import(".prisma/client").$Enums.UserStatus;
     }>;
     updateAvailability(staffProfileId: string, availability: Array<{
@@ -36,21 +36,21 @@ export declare class StaffService {
         startTime: string;
         endTime: string;
     }>): Promise<{
-        id: string;
         dayOfWeek: number;
         startTime: string;
         endTime: string;
+        id: string;
     }[]>;
     updateServices(staffProfileId: string, serviceSlugs: string[]): Promise<{
         service: {
             id: string;
-            slug: string;
             name: string;
+            slug: string;
         };
     }[]>;
     updatePhoto(staffProfileId: string, photoUrl: string): import(".prisma/client").Prisma.Prisma__StaffProfileClient<{
-        id: string;
         photoUrl: string | null;
+        id: string;
     }, never, import("@prisma/client/runtime/library").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
     updateProfile(staffProfileId: string, data: {
         firstName: string;
@@ -60,23 +60,41 @@ export declare class StaffService {
         locationSlug: string;
         role: UserRole;
         displayTitle: string;
+        initialPassword?: string;
     }): Promise<{
-        id: string;
         displayTitle: string | null;
+        id: string;
         user: {
-            id: string;
             role: import(".prisma/client").$Enums.UserRole;
+            id: string;
         };
     } | null>;
     remove(staffProfileId: string): Promise<{
         id: string;
         status: import(".prisma/client").$Enums.UserStatus;
     }>;
-    list(): import(".prisma/client").Prisma.PrismaPromise<{
+    list(): Promise<{
+        user: {
+            passwordHash: undefined;
+            hasPassword: boolean;
+            firstName: string;
+            lastName: string;
+            email: string;
+            phone: string | null;
+            role: import(".prisma/client").$Enums.UserRole;
+            id: string;
+            status: import(".prisma/client").$Enums.UserStatus;
+        };
+        displayTitle: string | null;
+        photoUrl: string | null;
+        availability: {
+            dayOfWeek: number;
+            startTime: string;
+            endTime: string;
+            id: string;
+        }[];
         id: string;
         bio: string | null;
-        photoUrl: string | null;
-        displayTitle: string | null;
         isBookable: boolean;
         location: {
             id: string;
@@ -86,24 +104,9 @@ export declare class StaffService {
         services: {
             service: {
                 id: string;
-                slug: string;
                 name: string;
+                slug: string;
             };
         }[];
-        availability: {
-            id: string;
-            dayOfWeek: number;
-            startTime: string;
-            endTime: string;
-        }[];
-        user: {
-            id: string;
-            email: string;
-            firstName: string;
-            lastName: string;
-            phone: string | null;
-            role: import(".prisma/client").$Enums.UserRole;
-            status: import(".prisma/client").$Enums.UserStatus;
-        };
     }[]>;
 }

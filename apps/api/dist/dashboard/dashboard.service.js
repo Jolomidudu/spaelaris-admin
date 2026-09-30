@@ -63,7 +63,7 @@ let DashboardService = class DashboardService {
             this.prisma.user.count({
                 where: {
                     status: client_1.UserStatus.ACTIVE,
-                    role: { in: [client_1.UserRole.MANAGER, client_1.UserRole.RECEPTIONIST, client_1.UserRole.THERAPIST] },
+                    role: { in: [client_1.UserRole.MANAGER, client_1.UserRole.RECEPTIONIST, client_1.UserRole.THERAPIST, client_1.UserRole.STAFF] },
                 },
             }),
             this.prisma.service.count({

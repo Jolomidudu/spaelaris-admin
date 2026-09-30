@@ -34,8 +34,7 @@ let StaffService = class StaffService {
             throw new common_1.BadRequestException('One or more services were not found');
         }
         const role = data.role ?? client_1.UserRole.THERAPIST;
-        const passwordlessSubCoreTitle = role === client_1.UserRole.RECEPTIONIST && ['Cleaner', 'Security', 'Maintenance', 'Spa-Attendant'].includes(data.displayTitle ?? '');
-        if (role !== client_1.UserRole.THERAPIST && !passwordlessSubCoreTitle && !data.initialPassword) {
+        if ((role === client_1.UserRole.MANAGER || role === client_1.UserRole.RECEPTIONIST) && !data.initialPassword) {
             throw new common_1.BadRequestException('An initial password is required for admin staff accounts');
         }
         const existingUser = await this.prisma.user.findUnique({ where: { email: data.email.trim().toLowerCase() } });
@@ -164,10 +163,14 @@ let StaffService = class StaffService {
     async updateProfile(staffProfileId, data) {
         const profile = await this.prisma.staffProfile.findUnique({
             where: { id: staffProfileId },
-            select: { userId: true },
+            select: { userId: true, user: { select: { passwordHash: true } } },
         });
         if (!profile)
             throw new common_1.BadRequestException('Staff profile was not found');
+        const roleRequiresLogin = data.role === client_1.UserRole.MANAGER || data.role === client_1.UserRole.RECEPTIONIST;
+        if (roleRequiresLogin && !profile.user.passwordHash && !data.initialPassword) {
+            throw new common_1.BadRequestException('Set an initial password for this login-enabled staff role');
+        }
         const location = await this.prisma.location.findUnique({ where: { slug: data.locationSlug } });
         if (!location)
             throw new common_1.BadRequestException('Location not found');
@@ -180,6 +183,7 @@ let StaffService = class StaffService {
                     email: data.email.trim().toLowerCase(),
                     phone: data.phone?.trim() || null,
                     role: data.role,
+                    passwordHash: data.initialPassword ? await bcrypt.hash(data.initialPassword, 12) : undefined,
                 },
             }),
             this.prisma.staffProfile.update({
@@ -205,8 +209,8 @@ let StaffService = class StaffService {
             select: { id: true, status: true },
         });
     }
-    list() {
-        return this.prisma.staffProfile.findMany({
+    async list() {
+        const profiles = await this.prisma.staffProfile.findMany({
             where: {
                 user: {
                     status: 'ACTIVE',
@@ -235,6 +239,7 @@ let StaffService = class StaffService {
                         phone: true,
                         role: true,
                         status: true,
+                        passwordHash: true,
                     },
                 },
                 location: {
@@ -257,6 +262,14 @@ let StaffService = class StaffService {
                 },
             },
         });
+        return profiles.map(({ user, ...profile }) => ({
+            ...profile,
+            user: {
+                ...user,
+                passwordHash: undefined,
+                hasPassword: Boolean(user.passwordHash),
+            },
+        }));
     }
 };
 exports.StaffService = StaffService;

@@ -39,6 +39,7 @@ const rolePermissions: Record<UserRole, ReadonlySet<Permission>> = {
     Permission.ManageOwnSchedule,
     Permission.UpdateAssignedAppointments,
   ]),
+  [UserRole.STAFF]: new Set(),
 };
 
 export function hasPermission(

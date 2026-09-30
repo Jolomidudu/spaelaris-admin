@@ -25,11 +25,11 @@ export declare class AppointmentsController {
     private readonly appointmentsService;
     constructor(appointmentsService: AppointmentsService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
-        id: string;
         startsAt: Date;
         endsAt: Date;
         status: import(".prisma/client").$Enums.AppointmentStatus;
         notes: string | null;
+        id: string;
         customer: {
             firstName: string;
             lastName: string;
@@ -92,16 +92,16 @@ export declare class AppointmentsController {
         }[];
     }>;
     create(body: CreateAppointmentDto): Promise<{
-        id: string;
         startsAt: Date;
         endsAt: Date;
         status: import(".prisma/client").$Enums.AppointmentStatus;
+        id: string;
     }>;
     update(id: string, body: UpdateAppointmentDto): Promise<{
-        id: string;
         startsAt: Date;
         endsAt: Date;
         status: import(".prisma/client").$Enums.AppointmentStatus;
+        id: string;
     }>;
 }
 export {};

@@ -33,14 +33,14 @@ export declare class CatalogController {
         id: string;
         services: {
             id: string;
-            includes: string[];
-            name: string;
             photoUrl: string | null;
+            name: string;
             slug: string;
             description: string | null;
+            durationMinutes: number | null;
+            includes: string[];
             details: string | null;
             benefits: string[];
-            durationMinutes: number | null;
             priceKobo: number;
         }[];
         name: string;
@@ -94,10 +94,10 @@ export declare class CatalogController {
         }[];
     }>;
     createBooking(body: CreatePublicBookingDto): Promise<{
-        id: string;
         startsAt: Date;
         endsAt: Date;
         status: import(".prisma/client").$Enums.AppointmentStatus;
+        id: string;
         location: {
             name: string;
             city: string;

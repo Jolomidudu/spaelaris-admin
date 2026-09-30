@@ -25,6 +25,7 @@ type StaffMember = {
     email: string;
     role: StaffRole | string;
     status?: string;
+    hasPassword?: boolean;
     phone?: string | null;
   };
   location: {
@@ -609,6 +610,7 @@ export default function StaffDirectoryPage() {
           locationSlug: roleForm.locationSlug,
           role: getBackendRoleForTab(roleCreateType),
           displayTitle: roleForm.designation,
+          initialPassword: roleForm.password.trim() || undefined,
         }),
       });
       const payload = await response.json();
@@ -702,7 +704,7 @@ export default function StaffDirectoryPage() {
     return "THERAPIST";
   }
 
-  function getBackendRoleForTab(tab: StaffRole): "MANAGER" | "THERAPIST" | "RECEPTIONIST" {
+  function getBackendRoleForTab(tab: StaffRole): "MANAGER" | "THERAPIST" | "RECEPTIONIST" | "STAFF" {
     switch (tab) {
       case "MANAGER":
         return "MANAGER";
@@ -711,7 +713,9 @@ export default function StaffDirectoryPage() {
       case "THERAPIST":
         return "THERAPIST";
       case "CORE":
+        return "RECEPTIONIST";
       case "SUB_CORE":
+        return "STAFF";
       case "RECEPTIONIST":
         return "RECEPTIONIST";
       default:
@@ -811,7 +815,7 @@ export default function StaffDirectoryPage() {
               ))}
             </div>
 
-            #f2f7ff
+           
           </div>
         </div>
 
@@ -1088,6 +1092,10 @@ export default function StaffDirectoryPage() {
                   {tabOptions.map((tab) => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
                 </select>
               </div>
+              {roleCreateType !== "SUB_CORE" && <div>
+                <Label>{editingRoleMember.user.hasPassword ? "New password (optional)" : "Initial password"}</Label>
+                <input value={roleForm.password} onChange={(event) => setRoleForm((current) => ({ ...current, password: event.target.value }))} placeholder={editingRoleMember.user.hasPassword ? "Leave blank to keep current password" : "Minimum 8 characters"} type="password" minLength={roleForm.password ? 8 : undefined} required={!editingRoleMember.user.hasPassword} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
+              </div>}
               <div>
                 <Label>{roleCreateType === "MANAGER" ? "Designation" : "Role"}</Label>
                 {roleCreateType === "CORE" || roleCreateType === "SUB_CORE" ? (

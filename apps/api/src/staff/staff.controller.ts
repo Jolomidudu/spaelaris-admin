@@ -44,7 +44,7 @@ class CreateStaffDto {
   serviceSlugs!: string[];
 
   @IsOptional()
-  @IsIn([UserRole.MANAGER, UserRole.RECEPTIONIST, UserRole.THERAPIST])
+  @IsIn([UserRole.MANAGER, UserRole.RECEPTIONIST, UserRole.THERAPIST, UserRole.STAFF])
   role?: UserRole;
 
   @IsOptional()
@@ -118,12 +118,17 @@ class UpdateStaffProfileDto {
   @IsString()
   locationSlug!: string;
 
-  @IsIn([UserRole.MANAGER, UserRole.RECEPTIONIST, UserRole.THERAPIST])
+  @IsIn([UserRole.MANAGER, UserRole.RECEPTIONIST, UserRole.THERAPIST, UserRole.STAFF])
   role!: UserRole;
 
   @IsString()
   @MinLength(1)
   displayTitle!: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  initialPassword?: string;
 }
 
 @Controller('staff')

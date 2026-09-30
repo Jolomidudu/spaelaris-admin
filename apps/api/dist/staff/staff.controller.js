@@ -68,7 +68,7 @@ __decorate([
 ], CreateStaffDto.prototype, "serviceSlugs", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsIn)([client_1.UserRole.MANAGER, client_1.UserRole.RECEPTIONIST, client_1.UserRole.THERAPIST]),
+    (0, class_validator_1.IsIn)([client_1.UserRole.MANAGER, client_1.UserRole.RECEPTIONIST, client_1.UserRole.THERAPIST, client_1.UserRole.STAFF]),
     __metadata("design:type", String)
 ], CreateStaffDto.prototype, "role", void 0);
 __decorate([
@@ -157,7 +157,7 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateStaffProfileDto.prototype, "locationSlug", void 0);
 __decorate([
-    (0, class_validator_1.IsIn)([client_1.UserRole.MANAGER, client_1.UserRole.RECEPTIONIST, client_1.UserRole.THERAPIST]),
+    (0, class_validator_1.IsIn)([client_1.UserRole.MANAGER, client_1.UserRole.RECEPTIONIST, client_1.UserRole.THERAPIST, client_1.UserRole.STAFF]),
     __metadata("design:type", String)
 ], UpdateStaffProfileDto.prototype, "role", void 0);
 __decorate([
@@ -165,6 +165,12 @@ __decorate([
     (0, class_validator_1.MinLength)(1),
     __metadata("design:type", String)
 ], UpdateStaffProfileDto.prototype, "displayTitle", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(8),
+    __metadata("design:type", String)
+], UpdateStaffProfileDto.prototype, "initialPassword", void 0);
 let StaffController = class StaffController {
     constructor(staffService) {
         this.staffService = staffService;

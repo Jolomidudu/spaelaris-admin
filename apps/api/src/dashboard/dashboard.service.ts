@@ -60,7 +60,7 @@ export class DashboardService {
       this.prisma.user.count({
         where: {
           status: UserStatus.ACTIVE,
-          role: { in: [UserRole.MANAGER, UserRole.RECEPTIONIST, UserRole.THERAPIST] },
+          role: { in: [UserRole.MANAGER, UserRole.RECEPTIONIST, UserRole.THERAPIST, UserRole.STAFF] },
         },
       }),
       this.prisma.service.count({

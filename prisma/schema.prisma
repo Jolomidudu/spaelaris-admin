@@ -12,6 +12,7 @@ enum UserRole {
   MANAGER
   RECEPTIONIST
   THERAPIST
+  STAFF
 }
 
 enum UserStatus {

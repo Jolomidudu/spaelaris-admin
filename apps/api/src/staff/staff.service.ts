@@ -37,8 +37,7 @@ export class StaffService {
     }
 
     const role = data.role ?? UserRole.THERAPIST;
-    const passwordlessSubCoreTitle = role === UserRole.RECEPTIONIST && ['Cleaner', 'Security', 'Maintenance', 'Spa-Attendant'].includes(data.displayTitle ?? '');
-    if (role !== UserRole.THERAPIST && !passwordlessSubCoreTitle && !data.initialPassword) {
+    if ((role === UserRole.MANAGER || role === UserRole.RECEPTIONIST) && !data.initialPassword) {
       throw new BadRequestException('An initial password is required for admin staff accounts');
     }
 
@@ -188,12 +187,18 @@ export class StaffService {
     locationSlug: string;
     role: UserRole;
     displayTitle: string;
+    initialPassword?: string;
   }) {
     const profile = await this.prisma.staffProfile.findUnique({
       where: { id: staffProfileId },
-      select: { userId: true },
+      select: { userId: true, user: { select: { passwordHash: true } } },
     });
     if (!profile) throw new BadRequestException('Staff profile was not found');
+
+    const roleRequiresLogin = data.role === UserRole.MANAGER || data.role === UserRole.RECEPTIONIST;
+    if (roleRequiresLogin && !profile.user.passwordHash && !data.initialPassword) {
+      throw new BadRequestException('Set an initial password for this login-enabled staff role');
+    }
 
     const location = await this.prisma.location.findUnique({ where: { slug: data.locationSlug } });
     if (!location) throw new BadRequestException('Location not found');
@@ -207,6 +212,7 @@ export class StaffService {
           email: data.email.trim().toLowerCase(),
           phone: data.phone?.trim() || null,
           role: data.role,
+          passwordHash: data.initialPassword ? await bcrypt.hash(data.initialPassword, 12) : undefined,
         },
       }),
       this.prisma.staffProfile.update({
@@ -235,8 +241,8 @@ export class StaffService {
     });
   }
 
-  list() {
-    return this.prisma.staffProfile.findMany({
+  async list() {
+    const profiles = await this.prisma.staffProfile.findMany({
       where: {
         user: {
           status: 'ACTIVE',
@@ -265,6 +271,7 @@ export class StaffService {
             phone: true,
             role: true,
             status: true,
+              passwordHash: true,
           },
         },
         location: {
@@ -287,5 +294,14 @@ export class StaffService {
         },
       },
     });
+
+    return profiles.map(({ user, ...profile }) => ({
+      ...profile,
+      user: {
+        ...user,
+        passwordHash: undefined,
+        hasPassword: Boolean(user.passwordHash),
+      },
+    }));
   }
 }

@@ -14,24 +14,24 @@ export declare class PublicBookingPaymentsController {
         appointment: {
             startsAt: Date;
             endsAt: Date;
+            status: import(".prisma/client").$Enums.AppointmentStatus;
+            id: string;
             location: {
                 name: string;
                 city: string;
             };
-            id: string;
+            therapist: {
+                firstName: string;
+                lastName: string;
+            } | null;
+            room: {
+                name: string;
+            } | null;
             services: {
                 name: string;
                 durationMinutes: number;
                 unitPriceKobo: number;
             }[];
-            status: import(".prisma/client").$Enums.AppointmentStatus;
-            room: {
-                name: string;
-            } | null;
-            therapist: {
-                firstName: string;
-                lastName: string;
-            } | null;
         };
     }>;
 }

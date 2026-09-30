@@ -43,6 +43,7 @@ const rolePermissions = {
         Permission.ManageOwnSchedule,
         Permission.UpdateAssignedAppointments,
     ]),
+    [client_1.UserRole.STAFF]: new Set(),
 };
 function hasPermission(role, permission) {
     return rolePermissions[role].has(permission);

@@ -9,9 +9,9 @@ export declare class DashboardController {
         categories: number;
         appointmentsToday: number;
         todaySchedule: {
-            id: string;
             startsAt: Date;
             status: import(".prisma/client").$Enums.AppointmentStatus;
+            id: string;
             customer: {
                 firstName: string;
                 lastName: string;
