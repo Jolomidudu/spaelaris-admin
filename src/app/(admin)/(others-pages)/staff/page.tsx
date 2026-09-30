@@ -801,7 +801,7 @@ export default function StaffDirectoryPage() {
             </button>
           </div>
 
-          <div className="mt-4 overflow-x-auto pb-1">
+          <div className="mt-4 overflow-x-auto pb-[10px]">
             <div className="flex min-w-max gap-2">
               {tabOptions.map((tab) => (
                 <button
@@ -825,7 +825,7 @@ export default function StaffDirectoryPage() {
         {!isLoading && !error && staffData.length === 0 && <p className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">No active staff records found.</p>}
 
         {!isLoading && !error && visibleStaff.length > 0 && activeTab === "THERAPIST" && (
-          <div className="overflow-x-auto">
+          <div className="mt-[20px] overflow-x-auto md:mt-0">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className="bg-gray-50 dark:bg-white/[0.02]">
                 <tr>
@@ -883,7 +883,7 @@ export default function StaffDirectoryPage() {
         )}
 
         {!isLoading && !error && visibleStaff.length > 0 && activeTab !== "THERAPIST" && (
-          <div className="overflow-x-auto">
+          <div className="mt-[20px] overflow-x-auto md:mt-0">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className="bg-gray-50 dark:bg-white/[0.02]">
                 <tr>
