@@ -250,9 +250,9 @@ export default function StaffDirectoryPage() {
           fetch(`${API_BASE_URL}/api/services`, { headers }),
           fetch(`${API_BASE_URL}/api/services/categories`, { headers }),
         ]);
-        if (!response.ok) throw new Error("Unable to load staff records.");
-        if (!serviceResponse.ok) throw new Error("Unable to load service options.");
-        if (!categoryResponse.ok) throw new Error("Unable to load service categories.");
+        if (!response.ok) throw new Error(`Unable to load staff records: API /staff returned ${response.status}. The backend deployment may be missing the staff routes.`);
+        if (!serviceResponse.ok) throw new Error(`Unable to load service options: API /services returned ${serviceResponse.status}.`);
+        if (!categoryResponse.ok) throw new Error(`Unable to load service categories: API /services/categories returned ${categoryResponse.status}.`);
         const nextStaff = (await response.json()) as StaffMember[];
         const nextServices = (await serviceResponse.json()) as ServiceOption[];
         const nextCategories = (await categoryResponse.json()) as ServiceCategoryOption[];
@@ -761,7 +761,7 @@ export default function StaffDirectoryPage() {
     <div className="space-y-6">
       <PageBreadcrumb pageTitle="Staff & Therapists" />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
           <p className="text-sm text-gray-500 dark:text-gray-400">Active staff</p>
           <p className="mt-3 text-2xl font-semibold text-gray-900 dark:text-white">{staffData.length}</p>
