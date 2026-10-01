@@ -32,6 +32,29 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateServiceCategoryDto.prototype, "description", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateServiceCategoryDto.prototype, "imageUrl", void 0);
+class UpdateServiceCategoryDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(2),
+    __metadata("design:type", String)
+], UpdateServiceCategoryDto.prototype, "name", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateServiceCategoryDto.prototype, "description", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateServiceCategoryDto.prototype, "imageUrl", void 0);
 class CreateServiceDto {
 }
 __decorate([
@@ -49,6 +72,11 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateServiceDto.prototype, "description", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateServiceDto.prototype, "photoUrl", void 0);
 __decorate([
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(1),
@@ -80,6 +108,11 @@ __decorate([
 ], UpdateServiceDto.prototype, "description", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateServiceDto.prototype, "photoUrl", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(1),
     __metadata("design:type", Number)
@@ -102,6 +135,12 @@ let ServicesController = class ServicesController {
     }
     createCategory(body) {
         return this.servicesService.createCategory(body);
+    }
+    updateCategory(id, body) {
+        return this.servicesService.updateCategory(id, body);
+    }
+    removeCategory(id) {
+        return this.servicesService.removeCategory(id);
     }
     create(body) {
         return this.servicesService.create(body);
@@ -133,6 +172,21 @@ __decorate([
     __metadata("design:paramtypes", [CreateServiceCategoryDto]),
     __metadata("design:returntype", void 0)
 ], ServicesController.prototype, "createCategory", null);
+__decorate([
+    (0, common_1.Patch)('categories/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateServiceCategoryDto]),
+    __metadata("design:returntype", void 0)
+], ServicesController.prototype, "updateCategory", null);
+__decorate([
+    (0, common_1.Delete)('categories/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ServicesController.prototype, "removeCategory", null);
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),

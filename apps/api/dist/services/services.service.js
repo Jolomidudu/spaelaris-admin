@@ -18,13 +18,14 @@ let ServicesService = class ServicesService {
     }
     list() {
         return this.prisma.service.findMany({
-            where: { isActive: true, category: { isActive: true } },
+            where: { category: { isActive: true } },
             orderBy: [{ category: { sortOrder: 'asc' } }, { name: 'asc' }],
             select: {
                 id: true,
                 name: true,
                 slug: true,
                 description: true,
+                photoUrl: true,
                 durationMinutes: true,
                 priceKobo: true,
                 isActive: true,
@@ -46,9 +47,49 @@ let ServicesService = class ServicesService {
                 name,
                 slug,
                 description: data.description?.trim() || undefined,
+                imageUrl: data.imageUrl?.trim() || undefined,
             },
-            select: { id: true, name: true, slug: true, description: true },
+            select: { id: true, name: true, slug: true, description: true, imageUrl: true },
         });
+    }
+    async updateCategory(id, data) {
+        const category = await this.prisma.serviceCategory.findUnique({ where: { id } });
+        if (!category || !category.isActive) {
+            throw new common_1.BadRequestException('Service category was not found');
+        }
+        const name = data.name?.trim();
+        if (name !== undefined && !name) {
+            throw new common_1.BadRequestException('Category name is required');
+        }
+        const slug = name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        if (slug && slug !== category.slug) {
+            const existing = await this.prisma.serviceCategory.findUnique({ where: { slug } });
+            if (existing) {
+                throw new common_1.BadRequestException('A category with this name already exists');
+            }
+        }
+        return this.prisma.serviceCategory.update({
+            where: { id },
+            data: {
+                name,
+                slug,
+                description: data.description === undefined ? undefined : data.description.trim() || null,
+                imageUrl: data.imageUrl === undefined ? undefined : data.imageUrl.trim() || null,
+            },
+            select: { id: true, name: true, slug: true, description: true, imageUrl: true },
+        });
+    }
+    async removeCategory(id) {
+        const category = await this.prisma.serviceCategory.findUnique({ where: { id } });
+        if (!category || !category.isActive) {
+            throw new common_1.BadRequestException('Service category was not found');
+        }
+        const activeServices = await this.prisma.service.count({ where: { categoryId: id, isActive: true } });
+        if (activeServices > 0) {
+            throw new common_1.BadRequestException("Move or delete this category's active services before deleting the category");
+        }
+        await this.prisma.serviceCategory.update({ where: { id }, data: { isActive: false } });
+        return { success: true };
     }
     async update(id, data) {
         const service = await this.prisma.service.findUnique({
@@ -80,6 +121,7 @@ let ServicesService = class ServicesService {
                 name: nextName,
                 categoryId: data.categoryId,
                 description: data.description === undefined ? undefined : data.description.trim() || null,
+                photoUrl: data.photoUrl === undefined ? undefined : data.photoUrl.trim() || null,
                 durationMinutes: data.durationMinutes,
                 priceKobo: data.priceNaira === undefined ? undefined : Math.round(data.priceNaira * 100),
             },
@@ -88,6 +130,7 @@ let ServicesService = class ServicesService {
                 name: true,
                 slug: true,
                 description: true,
+                photoUrl: true,
                 durationMinutes: true,
                 priceKobo: true,
                 isActive: true,
@@ -128,6 +171,7 @@ let ServicesService = class ServicesService {
                 slug,
                 categoryId: category.id,
                 description: data.description?.trim() || undefined,
+                photoUrl: data.photoUrl?.trim() || undefined,
                 durationMinutes: data.durationMinutes,
                 priceKobo: Math.round(data.priceNaira * 100),
             },
@@ -136,6 +180,7 @@ let ServicesService = class ServicesService {
                 name: true,
                 slug: true,
                 description: true,
+                photoUrl: true,
                 durationMinutes: true,
                 priceKobo: true,
                 isActive: true,
@@ -147,7 +192,7 @@ let ServicesService = class ServicesService {
         return this.prisma.serviceCategory.findMany({
             where: { isActive: true },
             orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-            select: { id: true, name: true, slug: true },
+            select: { id: true, name: true, slug: true, description: true, imageUrl: true },
         });
     }
 };

@@ -14,6 +14,25 @@ class CreateServiceCategoryDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+}
+
+class UpdateServiceCategoryDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
 }
 
 class CreateServiceDto {
@@ -28,6 +47,10 @@ class CreateServiceDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
 
   @IsInt()
   @Min(1)
@@ -52,6 +75,10 @@ class UpdateServiceDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
 
   @IsOptional()
   @IsInt()
@@ -83,6 +110,16 @@ export class ServicesController {
   @Post('categories')
   createCategory(@Body() body: CreateServiceCategoryDto) {
     return this.servicesService.createCategory(body);
+  }
+
+  @Patch('categories/:id')
+  updateCategory(@Param('id') id: string, @Body() body: UpdateServiceCategoryDto) {
+    return this.servicesService.updateCategory(id, body);
+  }
+
+  @Delete('categories/:id')
+  removeCategory(@Param('id') id: string) {
+    return this.servicesService.removeCategory(id);
   }
 
   @Post()

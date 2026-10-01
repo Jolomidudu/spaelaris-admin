@@ -10,6 +10,7 @@ import {
   ChartNoAxesCombined,
   CreditCard,
   Gift,
+  Settings,
   ShieldUser,
   SquareChartGantt,
   SquareText,
@@ -85,6 +86,11 @@ const othersItems: NavItem[] = [
     name: "My profile",
     path: "/profile",
   },
+  {
+    icon: <Settings color="#6f7f3f" />,
+    name: "Account Settings",
+    path: "/account-settings",
+  },
 ];
 
 const AppSidebar: React.FC = () => {
@@ -114,9 +120,9 @@ const AppSidebar: React.FC = () => {
   const visibleOtherItems = useMemo(() => {
     if (normalizedRole === "OWNER" || normalizedRole === "MANAGER") return othersItems;
     if (normalizedRole === "RECEPTIONIST") {
-      return othersItems.filter((item) => ["Memberships", "Payments", "My profile"].includes(item.name));
+      return othersItems.filter((item) => ["Memberships", "Payments", "My profile", "Account Settings"].includes(item.name));
     }
-    return othersItems.filter((item) => ["My profile"].includes(item.name));
+    return othersItems.filter((item) => ["My profile", "Account Settings"].includes(item.name));
   }, [normalizedRole]);
 
   const renderMenuItems = (items: NavItem[]) => (

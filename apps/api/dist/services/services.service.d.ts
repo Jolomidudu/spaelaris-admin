@@ -4,6 +4,7 @@ export declare class ServicesService {
     constructor(prisma: PrismaService);
     list(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
+        photoUrl: string | null;
         name: string;
         slug: string;
         isActive: boolean;
@@ -19,20 +20,38 @@ export declare class ServicesService {
     createCategory(data: {
         name: string;
         description?: string;
+        imageUrl?: string;
     }): Promise<{
         id: string;
         name: string;
         slug: string;
         description: string | null;
+        imageUrl: string | null;
+    }>;
+    updateCategory(id: string, data: {
+        name?: string;
+        description?: string;
+        imageUrl?: string;
+    }): Promise<{
+        id: string;
+        name: string;
+        slug: string;
+        description: string | null;
+        imageUrl: string | null;
+    }>;
+    removeCategory(id: string): Promise<{
+        success: boolean;
     }>;
     update(id: string, data: {
         name?: string;
         categoryId?: string;
         description?: string;
+        photoUrl?: string;
         durationMinutes?: number;
         priceNaira?: number;
     }): Promise<{
         id: string;
+        photoUrl: string | null;
         name: string;
         slug: string;
         isActive: boolean;
@@ -57,10 +76,12 @@ export declare class ServicesService {
         name: string;
         categoryId: string;
         description?: string;
+        photoUrl?: string;
         durationMinutes: number;
         priceNaira: number;
     }): Promise<{
         id: string;
+        photoUrl: string | null;
         name: string;
         slug: string;
         isActive: boolean;
@@ -77,5 +98,7 @@ export declare class ServicesService {
         id: string;
         name: string;
         slug: string;
+        description: string | null;
+        imageUrl: string | null;
     }[]>;
 }

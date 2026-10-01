@@ -64,6 +64,16 @@ model User {
   firstName    String
   lastName     String
   phone        String?
+  bio          String?
+  photoUrl     String?
+  country      String?
+  cityState    String?
+  postalCode   String?
+  taxId        String?
+  facebookUrl  String?
+  xUrl         String?
+  linkedinUrl  String?
+  instagramUrl String?
   role         UserRole
   status       UserStatus    @default(INVITED)
   passwordHash String?

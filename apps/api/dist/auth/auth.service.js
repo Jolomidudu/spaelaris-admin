@@ -39,6 +39,99 @@ let AuthService = class AuthService {
             user: authenticatedUser,
         };
     }
+    async profile(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                bio: true,
+                photoUrl: true,
+                country: true,
+                cityState: true,
+                postalCode: true,
+                taxId: true,
+                facebookUrl: true,
+                xUrl: true,
+                linkedinUrl: true,
+                instagramUrl: true,
+                role: true,
+                staffProfile: { select: { bio: true, photoUrl: true } },
+            },
+        });
+        if (!user)
+            throw new common_1.UnauthorizedException('Signed-in user was not found');
+        const { staffProfile, ...profile } = user;
+        return {
+            ...profile,
+            bio: profile.bio ?? staffProfile?.bio ?? null,
+            photoUrl: profile.photoUrl ?? staffProfile?.photoUrl ?? null,
+        };
+    }
+    async updateProfile(userId, data) {
+        const firstName = data.firstName?.trim();
+        const lastName = data.lastName?.trim();
+        const email = data.email?.trim().toLowerCase();
+        if (data.firstName !== undefined && !firstName)
+            throw new common_1.BadRequestException('First name is required');
+        if (data.lastName !== undefined && !lastName)
+            throw new common_1.BadRequestException('Last name is required');
+        if (data.email !== undefined && !email)
+            throw new common_1.BadRequestException('Email address is required');
+        if (email) {
+            const existing = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+            if (existing && existing.id !== userId) {
+                throw new common_1.ConflictException('An account with this email address already exists');
+            }
+        }
+        const nullable = (value) => value === undefined ? undefined : value?.trim() || null;
+        await this.prisma.$transaction(async (transaction) => {
+            await transaction.user.update({
+                where: { id: userId },
+                data: {
+                    firstName,
+                    lastName,
+                    email,
+                    phone: nullable(data.phone),
+                    bio: nullable(data.bio),
+                    photoUrl: nullable(data.photoUrl),
+                    country: nullable(data.country),
+                    cityState: nullable(data.cityState),
+                    postalCode: nullable(data.postalCode),
+                    taxId: nullable(data.taxId),
+                    facebookUrl: nullable(data.facebookUrl),
+                    xUrl: nullable(data.xUrl),
+                    linkedinUrl: nullable(data.linkedinUrl),
+                    instagramUrl: nullable(data.instagramUrl),
+                },
+            });
+            await transaction.staffProfile.updateMany({
+                where: { userId },
+                data: {
+                    bio: nullable(data.bio),
+                    photoUrl: nullable(data.photoUrl),
+                },
+            });
+        });
+        return this.profile(userId);
+    }
+    async changePassword(userId, currentPassword, newPassword) {
+        if (currentPassword === newPassword) {
+            throw new common_1.BadRequestException('New password must be different from the current password');
+        }
+        const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+        if (!user?.passwordHash || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+            throw new common_1.UnauthorizedException('Current password is incorrect');
+        }
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { passwordHash: await bcrypt.hash(newPassword, 12) },
+        });
+        return { success: true };
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
