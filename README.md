@@ -15,7 +15,7 @@ The platform manages:
 
 ## Architecture
 
-This workspace contains the backend application. The admin frontend is maintained in the separate `sew-admin2` project.
+This project contains both the Spaelaris admin frontend and its backend API.
 
 - **API:** NestJS 11
 - **Database:** PostgreSQL on Neon
@@ -23,7 +23,7 @@ This workspace contains the backend application. The admin frontend is maintaine
 - **Authentication:** JWT with bcrypt password validation
 - **Payments:** Paystack with Nigerian naira pricing
 - **Backend hosting:** Railway
-- **Frontend:** Next.js 16 and React 19 in the frontend project
+- **Admin frontend:** Next.js 16 and React 19, maintained in this project
 
 The API uses the `/api` prefix. The frontend communicates with the deployed Railway API through `NEXT_PUBLIC_API_URL`.
 
@@ -145,7 +145,7 @@ https://your-railway-domain/api/health
 
 ## Frontend Connection
 
-In the separate `sew-admin2` frontend project, set:
+The admin frontend in this project reads `NEXT_PUBLIC_API_URL` from the root `.env` file. Set it to the backend API origin:
 
 ```env
 NEXT_PUBLIC_API_URL="https://your-railway-domain"
