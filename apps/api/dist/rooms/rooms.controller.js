@@ -37,6 +37,36 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateRoomDto.prototype, "description", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(68_000),
+    __metadata("design:type", String)
+], CreateRoomDto.prototype, "photoUrl", void 0);
+class UpdateRoomDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], UpdateRoomDto.prototype, "name", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateRoomDto.prototype, "locationSlug", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], UpdateRoomDto.prototype, "description", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(68_000),
+    __metadata("design:type", Object)
+], UpdateRoomDto.prototype, "photoUrl", void 0);
 let RoomsController = class RoomsController {
     constructor(roomsService) {
         this.roomsService = roomsService;
@@ -46,6 +76,12 @@ let RoomsController = class RoomsController {
     }
     create(body) {
         return this.roomsService.create(body);
+    }
+    update(id, body) {
+        return this.roomsService.update(id, body);
+    }
+    remove(id) {
+        return this.roomsService.remove(id);
     }
 };
 exports.RoomsController = RoomsController;
@@ -62,6 +98,21 @@ __decorate([
     __metadata("design:paramtypes", [CreateRoomDto]),
     __metadata("design:returntype", void 0)
 ], RoomsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Patch)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateRoomDto]),
+    __metadata("design:returntype", void 0)
+], RoomsController.prototype, "update", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], RoomsController.prototype, "remove", null);
 exports.RoomsController = RoomsController = __decorate([
     (0, common_1.Controller)('rooms'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),

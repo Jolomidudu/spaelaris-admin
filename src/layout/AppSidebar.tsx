@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Bed,
+  Bell,
   CalendarDays,
   CalendarHeart,
   ChartNoAxesCombined,
@@ -82,6 +83,11 @@ const othersItems: NavItem[] = [
     path: "/payments",
   },
   {
+    icon: <Bell color="#6f7f3f" />,
+    name: "Notifications",
+    path: "/notifications",
+  },
+  {
     icon: <ShieldUser />,
     name: "My profile",
     path: "/profile",
@@ -120,9 +126,9 @@ const AppSidebar: React.FC = () => {
   const visibleOtherItems = useMemo(() => {
     if (normalizedRole === "OWNER" || normalizedRole === "MANAGER") return othersItems;
     if (normalizedRole === "RECEPTIONIST") {
-      return othersItems.filter((item) => ["Memberships", "Payments", "My profile", "Account Settings"].includes(item.name));
+      return othersItems.filter((item) => ["Memberships", "Payments", "Notifications", "My profile", "Account Settings"].includes(item.name));
     }
-    return othersItems.filter((item) => ["My profile", "Account Settings"].includes(item.name));
+    return othersItems.filter((item) => ["Notifications", "My profile", "Account Settings"].includes(item.name));
   }, [normalizedRole]);
 
   const renderMenuItems = (items: NavItem[]) => (

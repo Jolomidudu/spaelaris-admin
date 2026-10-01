@@ -12,9 +12,10 @@ import { PackagesModule } from './packages/packages.module';
 import { MembershipsModule } from './memberships/memberships.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, StaffModule, CustomersModule, AppointmentsModule, PaymentsModule, ServicesModule, RoomsModule, PackagesModule, MembershipsModule, CatalogModule, DashboardModule],
+  imports: [PrismaModule, AuthModule, StaffModule, CustomersModule, AppointmentsModule, PaymentsModule, ServicesModule, RoomsModule, PackagesModule, MembershipsModule, CatalogModule, DashboardModule, NotificationsModule],
   controllers: [HealthController],
 })
 export class AppModule {}
