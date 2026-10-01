@@ -7,11 +7,8 @@ import {
   Bed,
   Bell,
   CalendarDays,
-  CalendarHeart,
   ChartNoAxesCombined,
   CreditCard,
-  Gift,
-  Settings,
   ShieldUser,
   SquareChartGantt,
   SquareText,
@@ -19,13 +16,13 @@ import {
 } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { getStoredRoleSnapshot, subscribeToAuthChanges } from "../lib/auth";
-import { HorizontaLDots } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 
 type NavItem = {
   name: string;
   icon: React.ReactNode;
   path: string;
+  disabled?: boolean;
 };
 
 const navItems: NavItem[] = [
@@ -59,24 +56,6 @@ const navItems: NavItem[] = [
     icon: <Bed color="#6f7f3f" />,
     path: "/rooms",
   },
-];
-
-const othersItems: NavItem[] = [
-  {
-    icon: <ChartNoAxesCombined color="#6f7f3f" />,
-    name: "Analytics",
-    path: "/line-chart",
-  },
-  {
-    icon: <Gift color="#6f7f3f" />,
-    name: "Packages",
-    path: "/packages",
-  },
-  {
-    icon: <CalendarHeart color="#6f7f3f" />,
-    name: "Memberships",
-    path: "/memberships",
-  },
   {
     icon: <CreditCard color="#6f7f3f" />,
     name: "Payments",
@@ -92,10 +71,21 @@ const othersItems: NavItem[] = [
     name: "My profile",
     path: "/profile",
   },
+  // {
+  //   icon: <Settings color="#6f7f3f" />,
+  //   name: "Account Settings",
+  //   path: "/account-settings",
+  // },
   {
-    icon: <Settings color="#6f7f3f" />,
-    name: "Account Settings",
-    path: "/account-settings",
+    icon: <ChartNoAxesCombined color="#6f7f3f" />,
+    name: "Reports",
+    path: "/line-chart",
+  },
+  {
+    icon: <ChartNoAxesCombined color="#6f7f3f" />,
+    name: "System Settings",
+    path: "#",
+    disabled: true,
   },
 ];
 
@@ -115,42 +105,40 @@ const AppSidebar: React.FC = () => {
   const visibleNavItems = useMemo(() => {
     if (normalizedRole === "OWNER") return navItems;
     if (normalizedRole === "MANAGER") {
-      return navItems.filter((item) => item.name !== "Staff & Therapists");
+      return navItems.filter((item) => item.name !== "Staff & Therapists" && item.name !== "System Settings");
     }
     if (normalizedRole === "RECEPTIONIST") {
-      return navItems.filter((item) => ["Overview", "Appointments", "Customers"].includes(item.name));
+      return navItems.filter((item) => ["Overview", "Appointments", "Customers", "Payments", "Notifications", "My profile"].includes(item.name));
     }
-    return navItems.filter((item) => ["Dashboard"].includes(item.name));
-  }, [normalizedRole]);
-
-  const visibleOtherItems = useMemo(() => {
-    if (normalizedRole === "OWNER" || normalizedRole === "MANAGER") return othersItems;
-    if (normalizedRole === "RECEPTIONIST") {
-      return othersItems.filter((item) => ["Memberships", "Payments", "Notifications", "My profile", "Account Settings"].includes(item.name));
-    }
-    return othersItems.filter((item) => ["Notifications", "My profile", "Account Settings"].includes(item.name));
+    return navItems.filter((item) => ["Notifications", "My profile"].includes(item.name));
   }, [normalizedRole]);
 
   const renderMenuItems = (items: NavItem[]) => (
     <ul className="flex flex-col gap-2">
-      {items.map((nav) => (
-        <li key={nav.name}>
-          <Link
-            href={nav.path}
-            onClick={closeSidebarOnMobile}
-            className={`menu-item group ${
-              nav.path === pathname ? "menu-item-active" : "menu-item-inactive"
-            }`}
-          >
-            <span className={nav.path === pathname ? "menu-item-icon-active" : "menu-item-icon-inactive"}>
-              {nav.icon}
-            </span>
-            {(isExpanded || isHovered || isMobileOpen) && (
-              <span className="menu-item-text">{nav.name}</span>
+      {items.map((nav) => {
+        const isActive = nav.path === pathname;
+        const itemClassName = `menu-item group ${isActive ? "menu-item-active" : "menu-item-inactive"} ${nav.disabled ? "cursor-not-allowed opacity-50" : ""}`;
+        const itemContents = (
+          <>
+            <span className={isActive ? "menu-item-icon-active" : "menu-item-icon-inactive"}>{nav.icon}</span>
+            {(isExpanded || isHovered || isMobileOpen) && <span className="menu-item-text">{nav.name}</span>}
+          </>
+        );
+
+        return (
+          <li key={nav.name}>
+            {nav.disabled ? (
+              <span aria-disabled="true" title={`${nav.name} is not available yet`} className={itemClassName}>
+                {itemContents}
+              </span>
+            ) : (
+              <Link href={nav.path} onClick={closeSidebarOnMobile} className={itemClassName}>
+                {itemContents}
+              </Link>
             )}
-          </Link>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 
@@ -204,33 +192,7 @@ const AppSidebar: React.FC = () => {
       </div>
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? "" : <HorizontaLDots />}
-              </h2>
-              {renderMenuItems(visibleNavItems)}
-            </div>
-
-            <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? normalizedRole === "RECEPTIONIST" ? "Front desk" : "Others" : <HorizontaLDots />}
-              </h2>
-              {renderMenuItems(visibleOtherItems)}
-            </div>
-          </div>
+          {renderMenuItems(visibleNavItems)}
         </nav>
         {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}
       </div>
